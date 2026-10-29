@@ -18,10 +18,10 @@
     },
     "homepage": "https://agent.cloud",
     "supportURL": null,
-    "documentationURL": null,
+    "documentationURL": "https://docs.agent.cloud/docs",
     "privacyPolicyURL": null,
     "termsOfServiceURL": null,
-    "icon": null,
+    "icon": "release-assets/icon.png",
     "keywords": [
       "agent-cloud",
       "hosting",
@@ -36,8 +36,8 @@
     ]
   },
   "license": {
-    "id": null,
-    "file": null
+    "id": "Apache-2.0",
+    "file": "release-assets/LICENSE"
   },
   "openai": {
     "review": null

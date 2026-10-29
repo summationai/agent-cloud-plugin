@@ -20,6 +20,7 @@
     "apps",
     "agc"
   ],
+  "license": "Apache-2.0",
   "extensions": {
     "com.openai": {
       "onboardingSkill": "./skills/setup/SKILL.md",
@@ -29,7 +30,9 @@
         "longDescription": "Host and run the apps your coding agent builds: one server with its own Postgres, migrations rehearsed on a branch of production, and a person's approval before live data changes. Set up agent.cloud, pick the right host for an app, then build, deploy and manage it from Claude Code or Codex with MCP and the agc CLI.",
         "developerName": "agent.cloud",
         "category": "Developer Tools",
-        "websiteURL": "https://agent.cloud"
+        "websiteURL": "https://agent.cloud",
+        "composerIcon": "./assets/icon.png",
+        "logo": "./assets/icon.png"
       }
     }
   }

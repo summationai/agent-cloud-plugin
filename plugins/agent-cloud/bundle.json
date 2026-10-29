@@ -15,8 +15,8 @@
   },
   "files": {
     ".claude-plugin/plugin.json": {
-      "sha256": "d60c412aa5e8ca5627531e57b27655f7802b55d0c367ea071b692eddc801e255",
-      "bytes": 747
+      "sha256": "dc15629ed314752a3c01d67fb183de74a7b8707f62549455c29f7d27315af146",
+      "bytes": 860
     },
     ".mcp.json": {
       "sha256": "81eeec3a860e2bc5861b6b5ddcb18e423530adf49b670212ce7b2fecbfafdd8b",
@@ -30,21 +30,29 @@
       "sha256": "b67da32a80c5fd02f18c66741a8f4b87a37826136d921c94bea02729e2e4c07c",
       "bytes": 1986
     },
+    "LICENSE": {
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "bytes": 11357
+    },
     "LICENSE-STATUS.md": {
-      "sha256": "d2350094fb0e4e88e562ab7e1a5d36eeaabd1bef324a88ac3329efc86fbc5d8c",
-      "bytes": 218
+      "sha256": "0e72b047ca934b68d6f9e937ef3c78dab5cdf23f0da2f8760b370b3edadc925d",
+      "bytes": 98
     },
     "README.md": {
       "sha256": "f50f91f350b996aba3c2efbf1d07f093b34a3d12a5bd8d4c69b93576dec6371d",
       "bytes": 6551
+    },
+    "assets/icon.png": {
+      "sha256": "59bbe05aafa8da2d737863c59d0ec45077d5ccf2beb7c1f9c211e22a1dc81861",
+      "bytes": 41144
     },
     "mcp.json": {
       "sha256": "104dcc7ef0f8dbf1dbe34df16a52971c7ec551d139ee9acba3496c1496175579",
       "bytes": 197
     },
     "plugin.json": {
-      "sha256": "34de3f7d507447dfac95f60b2e491c6c382f8cf18c50dcb2ea2c5581252595ff",
-      "bytes": 1487
+      "sha256": "4005f8c1420b22c12d414d1a3c691f75ecbe237168fddf3ef9161c6ad6a82488",
+      "bytes": 1596
     },
     "references/connection.md": {
       "sha256": "222f9c56cec4df952d33f8ea6bbec09e92b00f88020ea2396a6c13c75bbe77a0",
