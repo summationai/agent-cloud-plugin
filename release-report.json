@@ -7,7 +7,7 @@
     {
       "target": "combined",
       "valid": true,
-      "files": 19,
+      "files": 20,
       "version": "0.1.1",
       "protocol_version": "2026-10-27",
       "environment": "production"
@@ -15,7 +15,7 @@
     {
       "target": "openai",
       "valid": true,
-      "files": 17,
+      "files": 18,
       "version": "0.1.1",
       "protocol_version": "2026-10-27",
       "environment": "production"
@@ -23,7 +23,7 @@
     {
       "target": "claude",
       "valid": true,
-      "files": 17,
+      "files": 18,
       "version": "0.1.1",
       "protocol_version": "2026-10-27",
       "environment": "production"
@@ -32,19 +32,15 @@
   "submission_metadata_gaps": {
     "openai": [
       "Configure plugin.supportURL.",
-      "Configure plugin.documentationURL.",
       "Configure plugin.privacyPolicyURL.",
       "Configure plugin.termsOfServiceURL.",
-      "Configure a reviewed listing icon.",
       "Supply the reviewer-accessible demo recording URL.",
       "Supply exactly five positive and three negative MCP review cases."
     ],
     "claude": [
       "Configure plugin.supportURL.",
-      "Configure plugin.documentationURL.",
       "Configure plugin.privacyPolicyURL.",
-      "Configure plugin.termsOfServiceURL.",
-      "Configure a reviewed listing icon."
+      "Configure plugin.termsOfServiceURL."
     ]
   },
   "publication": {

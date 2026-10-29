@@ -20,5 +20,7 @@
     "agc"
   ],
   "license": "Apache-2.0",
-  "displayName": "agent.cloud"
+  "displayName": "agent.cloud",
+  "documentationUrl": "https://docs.agent.cloud/docs",
+  "icon": "./assets/icon.png"
 }
