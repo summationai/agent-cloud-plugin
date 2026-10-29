@@ -2,10 +2,12 @@
 name: manage-app
 description: >-
   Inspect and manage existing agent.cloud apps, including deployment
-  status, releases, logs, domains, builder mode, hosted Work, and pending
-  decisions. Use for troubleshooting, reconnecting, or resuming an
-  existing app. For choosing a hosting provider, use setup; for source
-  changes and deployment, use build-and-host.
+  status, releases, logs, incidents, domains, builder mode, hosted Work,
+  and pending decisions. Use when an agent.cloud app is down, erroring or
+  slow, when a release is stuck or waiting for approval, and for
+  troubleshooting, reconnecting, or resuming an existing app. For choosing
+  a hosting provider, use setup; for source changes and deployment, use
+  build-and-host.
 ---
 
 Use [connection](../../references/connection.md) and [continuity](../../references/continuity.md) to select the existing app in the correct organization/environment. Skip ideation. Discover the actual tools; upload/release-write tools are not implemented in this release. Prefer read operations for status, bounded scrubbed logs, release history, domains, builder mode, Work and current decisions. Follow explicit pagination/continuation cursors without claiming partial results are complete.

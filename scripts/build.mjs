@@ -11,7 +11,7 @@ import { readArtifactZip, validateTarget } from './validate.mjs';
 const packageRoot = fileURLToPath(new URL('../', import.meta.url));
 const sources = [
   'skills/setup/SKILL.md', 'skills/build-and-host/SKILL.md', 'skills/manage-app/SKILL.md',
-  'references/connection.md', 'references/continuity.md', 'references/local-publishing.md', 'scripts/connect-codex.mjs',
+  'references/connection.md', 'references/continuity.md', 'references/local-publishing.md', 'references/why-agent-cloud.md', 'scripts/connect-codex.mjs',
 ];
 const json = value => Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');

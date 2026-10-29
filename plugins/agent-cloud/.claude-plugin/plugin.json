@@ -1,7 +1,7 @@
 {
   "name": "agent-cloud",
   "version": "0.1.0",
-  "description": "Set up agent.cloud, propose a first app, and build, host and manage apps with MCP and agc. CLI publishing qualification and a bundled uploader remain pending.",
+  "description": "Host and run the apps your coding agent builds: one server with its own Postgres, migrations rehearsed on a branch of production, and a person's approval before live data changes. Set up agent.cloud, pick the right host for an app, then build, deploy and manage it from Claude Code or Codex with MCP and the agc CLI.",
   "author": {
     "name": "agent.cloud"
   },
@@ -9,8 +9,15 @@
   "repository": "https://github.com/summationai/agent-cloud-plugin",
   "keywords": [
     "agent-cloud",
+    "hosting",
+    "deploy",
+    "deployment",
+    "postgres",
+    "database",
+    "full-stack",
+    "migrations",
     "apps",
-    "hosting"
+    "agc"
   ],
   "displayName": "agent.cloud"
 }
