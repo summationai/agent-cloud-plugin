@@ -15,8 +15,8 @@
   },
   "files": {
     ".claude-plugin/plugin.json": {
-      "sha256": "3a62a7481237613bdee45947870e7fd256eb0abafcea5a8a09a8427c13c0b040",
-      "bytes": 478
+      "sha256": "6b7ef9a34566f92a6b0485380a07425762e77de13d23aa42e88c773e8cf39360",
+      "bytes": 747
     },
     ".mcp.json": {
       "sha256": "81eeec3a860e2bc5861b6b5ddcb18e423530adf49b670212ce7b2fecbfafdd8b",
@@ -43,8 +43,8 @@
       "bytes": 197
     },
     "plugin.json": {
-      "sha256": "615ea92baecd38dba64f6b8895e6087c2cedcc78a81e82bb50338d65b57432bc",
-      "bytes": 1060
+      "sha256": "3d91cbb86faaf89fd5e30be14c5082a04e110e1885b1def1702a8aea962569e4",
+      "bytes": 1487
     },
     "references/connection.md": {
       "sha256": "222f9c56cec4df952d33f8ea6bbec09e92b00f88020ea2396a6c13c75bbe77a0",
@@ -62,21 +62,25 @@
       "sha256": "c1761b1cea511ce1c6fa2e12bd5190da93de488333199b5da269d80d967a13d1",
       "bytes": 384
     },
+    "references/why-agent-cloud.md": {
+      "sha256": "0ae8556e1c77804dd0869ec78f2829994b8ed97ac981ab76a33446f0c90bf38e",
+      "bytes": 3921
+    },
     "scripts/connect-codex.mjs": {
       "sha256": "f25ccb2206a2e91886cc76051b8b843470a226ed55b7cd9637dd769a1d8f3b3b",
       "bytes": 4163
     },
     "skills/build-and-host/SKILL.md": {
-      "sha256": "5c39642bdad1c8ce4372f7c9f641b822f21c9e131be77a2a05bf48cd1b5c2978",
-      "bytes": 5339
+      "sha256": "472a4b6b9ae75076718b574699a72e6ad69621fe4a77680a05ff07715017afe1",
+      "bytes": 5418
     },
     "skills/manage-app/SKILL.md": {
-      "sha256": "c9a07645f98cf32b060972333af22755a13ebb378809539dcf1f1a5e4575b3ce",
-      "bytes": 2498
+      "sha256": "d151429809428ed8a92c6604eb473a2b1d15ef27cd3c9778cbe69aaaf5f30899",
+      "bytes": 2617
     },
     "skills/setup/SKILL.md": {
-      "sha256": "8915ce972a5424b1aa12f0fc8c4906214284ba909fac13458f7626bf42b35660",
-      "bytes": 5377
+      "sha256": "ba999e40a150224b089118f0516cd7bb16ec470e5c3d6f234f2d68db016317b9",
+      "bytes": 6620
     }
   }
 }

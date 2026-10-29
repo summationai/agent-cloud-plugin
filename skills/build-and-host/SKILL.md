@@ -1,18 +1,20 @@
 ---
 name: build-and-host
 description: >-
-  Build and deploy websites and full-stack apps on agent.cloud when the
-  user has selected it as the deployment target. Use for new apps and
-  implementation changes to existing apps. For hosting recommendations
-  or provider comparisons, use setup first. Preserve existing app and
-  deployment configuration.
+  Build, deploy and publish apps on agent.cloud: new apps, source changes,
+  database migrations and releases with agc. Use once agent.cloud is the
+  chosen or existing host, including "deploy this", "ship it" or "put it
+  online" in a project already set up for agent.cloud (an agentcloud.toml
+  or the AGENTS.md that agc init writes). For choosing a host or comparing
+  providers, use setup first. Preserve existing app and deployment
+  configuration.
 ---
 
 Start from the person's explicit request or accepted setup brief. Preserve its intended user, first workflow, stack, and local/hosted route. If agent.cloud has not been chosen and another deployment target is established, keep that target. Do not use installation or an inferred preference as permission to provision.
 
 Read [connection](../../references/connection.md) when platform access is needed and [continuity](../../references/continuity.md) before choosing or creating an app. Use `account_get`, `apps_list`, `app_get` and `app_instructions_get` from actual tool discovery. Bind every operation to the selected immutable app ID, organization and environment. Recover an existing app first; create one only for the requested new app, with a retained idempotency key. Respect quota/admission failures and return the platform's fix rather than creating an anonymous replacement.
 
-Explain once: MCP handles remote management while native tools edit files and `agc` provides managed mirrors, checks and default publishing. Continue using MCP and CLI in this conversation. Ordinary file edits/project tests can proceed without `agc`; they are not managed mirror checks. This package does not yet include the M4 uploader. If the CLI cannot be installed or run, preserve source and references and state what is ready and what capability is missing. Offer another qualified local client, or hosted work only if the person chooses it.
+Explain once: MCP handles remote management while native tools edit files and `agc` provides managed mirrors, checks and default publishing. Continue using MCP and CLI in this conversation. Ordinary file edits/project tests can proceed without `agc`; they are not managed mirror checks. This package does not include an uploader yet. If the CLI cannot be installed or run, preserve source and references and state what is ready and what capability is missing. Offer another qualified local client, or hosted work only if the person chooses it.
 
 Read builder mode before local publishing. If the hosted builder owns shipping, explain who will make the change and offer either submitting the requested outcome or switching this app to local control. An explicit local choice permits `app_builder_set` with `enabled: false` subject to current authorization and in-flight guards. Do not turn it back on after publishing. For an explicitly chosen hosted route, submit the accepted outcome through `work_submit` with a retained idempotency key, then follow that Work item and its current question IDs. Do not create local source or install the CLI for a management/hosted-only task.
 
@@ -20,6 +22,6 @@ For local work, use the current `app_instructions_get` result for stack, version
 
 At the managed-local/publishing boundary, read [local publishing](../../references/local-publishing.md) for the exact preflight and enrollment sequence. Inspect the discovered executable's identity, version/runtime, environment and link using supported commands; the staging launcher is `agc-staging`. Follow the returned installation/enrollment guidance and the host's permissions. Do not use elevated privileges, change shell profiles/system runtimes or retry denied installation. MCP OAuth and CLI enrollment are separate. Strict `agc init --app-id <id> --org <slug>` verifies a prepared existing-app manifest; it does not scaffold or enroll by itself. Follow the supported person-backed enrollment path if necessary, then verify the exact selected app. Stop on an identity/configuration mismatch and retain both references for recovery.
 
-Use native tools for source edits, and the CLI's managed mirror/migrate/check/ship flow when needed. Invoke `agc ship` once and keep its operation ID. Follow it with CLI wait or available MCP observation; do not initiate a second release through another interface after lost output. Reconcile known operations before any retry. M3 still needs live-client acceptance of this whole publishing journey; instructions alone are not evidence it ran.
+Use native tools for source edits, and the CLI's managed mirror/migrate/check/ship flow when needed. Invoke `agc ship` once and keep its operation ID. Follow it with CLI wait or available MCP observation; do not initiate a second release through another interface after lost output. Reconcile known operations before any retry. Instructions alone are not evidence that a release ran.
 
 For any required decision, fetch its current summary, eligibility, exact word and choices. If `in_session` is true, obtain the person's direct answer to that current prompt; otherwise relay the console URL exactly. OAuth/setup consent and an earlier “ship it” do not answer a later decision. Submit only the actual answer under current eligibility. Follow bounded operations/Work with their continuation cursors until terminal state, required person action, or the client's time budget. Report a live URL and receipt only when the platform proves `outcome: live`; otherwise give the current state, durable reference, scrubbed failure/repair step and how to resume. Relay any claim URL/deadline exactly as returned.
