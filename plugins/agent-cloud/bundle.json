@@ -15,8 +15,8 @@
   },
   "files": {
     ".claude-plugin/plugin.json": {
-      "sha256": "dc15629ed314752a3c01d67fb183de74a7b8707f62549455c29f7d27315af146",
-      "bytes": 860
+      "sha256": "ef9c96ceb6f6ee90441af71467929e34637fa0e3379adac68db16064ed584ccc",
+      "bytes": 1012
     },
     ".mcp.json": {
       "sha256": "81eeec3a860e2bc5861b6b5ddcb18e423530adf49b670212ce7b2fecbfafdd8b",
@@ -51,8 +51,8 @@
       "bytes": 197
     },
     "plugin.json": {
-      "sha256": "4005f8c1420b22c12d414d1a3c691f75ecbe237168fddf3ef9161c6ad6a82488",
-      "bytes": 1596
+      "sha256": "a15c680d55065aa1ba16b733b9fc35a8d946a77d57eee06451073d2214151a63",
+      "bytes": 1766
     },
     "references/connection.md": {
       "sha256": "222f9c56cec4df952d33f8ea6bbec09e92b00f88020ea2396a6c13c75bbe77a0",
