@@ -31,8 +31,7 @@
   ],
   "submission_metadata_gaps": {
     "openai": [
-      "Supply the reviewer-accessible demo recording URL.",
-      "Supply exactly five positive and three negative MCP review cases."
+      "Supply the reviewer-accessible demo recording URL."
     ],
     "claude": []
   },
