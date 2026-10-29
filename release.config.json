@@ -36,8 +36,8 @@
     ]
   },
   "license": {
-    "id": null,
-    "file": null
+    "id": "Apache-2.0",
+    "file": "release-assets/LICENSE"
   },
   "openai": {
     "review": null

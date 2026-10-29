@@ -7,7 +7,7 @@
     {
       "target": "combined",
       "valid": true,
-      "files": 18,
+      "files": 19,
       "version": "0.1.1",
       "protocol_version": "2026-10-27",
       "environment": "production"
@@ -15,7 +15,7 @@
     {
       "target": "openai",
       "valid": true,
-      "files": 16,
+      "files": 17,
       "version": "0.1.1",
       "protocol_version": "2026-10-27",
       "environment": "production"
@@ -23,7 +23,7 @@
     {
       "target": "claude",
       "valid": true,
-      "files": 16,
+      "files": 17,
       "version": "0.1.1",
       "protocol_version": "2026-10-27",
       "environment": "production"
@@ -31,7 +31,6 @@
   ],
   "submission_metadata_gaps": {
     "openai": [
-      "Configure the approved license identifier and license text.",
       "Configure plugin.supportURL.",
       "Configure plugin.documentationURL.",
       "Configure plugin.privacyPolicyURL.",
@@ -41,7 +40,6 @@
       "Supply exactly five positive and three negative MCP review cases."
     ],
     "claude": [
-      "Configure the approved license identifier and license text.",
       "Configure plugin.supportURL.",
       "Configure plugin.documentationURL.",
       "Configure plugin.privacyPolicyURL.",

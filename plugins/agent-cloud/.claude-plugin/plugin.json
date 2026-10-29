@@ -19,5 +19,6 @@
     "apps",
     "agc"
   ],
+  "license": "Apache-2.0",
   "displayName": "agent.cloud"
 }

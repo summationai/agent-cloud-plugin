@@ -3,8 +3,8 @@
   "version": "0.1.1",
   "environment": "production",
   "repository": "https://github.com/summationai/agent-cloud-plugin",
-  "bundle_sha256": "4f9b11255d9047399672bb8ac57d3c886cf58df86e2f94bc7aec13d4e116940f",
-  "license": null,
+  "bundle_sha256": "0f3d71f6807485eec6ebce3f600ff70c412e2cb2fddfc0347712f1dd975a2b4d",
+  "license": "Apache-2.0",
   "targets": [
     "openai",
     "claude"

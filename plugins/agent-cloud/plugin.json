@@ -20,6 +20,7 @@
     "apps",
     "agc"
   ],
+  "license": "Apache-2.0",
   "extensions": {
     "com.openai": {
       "onboardingSkill": "./skills/setup/SKILL.md",
