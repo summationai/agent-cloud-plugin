@@ -22,7 +22,7 @@ npm run check:generated
 - `package.json` owns the shared version and toolchain. `package-lock.json` is standalone and pins public registry dependencies. After dependency/version changes, update and commit both files.
 - `plugins/agent-cloud/`, both root marketplace catalogs and the root consumer/release documentation are generated installation files committed for Git-based client installation. Do not edit those copies by hand. `dist/` and `node_modules/` are ignored.
 
-After editing source or configuration, run the tests and `npm run sync:generated`, review the changes, then `npm run check:generated`. Sync replaces only the declared generated files; it preserves `.git`, source inputs and other local files. The check fails if a source change has not been reflected in the installation tree. The public GitHub workflow runs install, tests, typecheck, build and this drift check.
+After editing source or configuration, run the tests and `npm run sync:generated`, review the changes, then `npm run check:generated`. Sync replaces only the declared generated files; it preserves `.git`, source inputs and other local files. The check fails if a source change has not been reflected in the installation tree. The public GitHub workflow runs install, tests, typecheck, build and this drift check. On the `{{channel}}` release branch it also checks that the commit is the `v<version>` tag for the package version.
 
 ## Reproduce submission artifacts
 

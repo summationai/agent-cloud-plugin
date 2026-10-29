@@ -36,7 +36,8 @@ export function buildPackage({ environment = 'production', out, sourceRoot = pac
   const origin = environment === 'staging' ? 'https://staging-agent.cloud' : 'https://agent.cloud';
   const name = 'agent-cloud', marketplaceName = config.marketplace.name + (environment === 'staging' ? '-staging' : '');
   const serverName = environment === 'staging' ? 'agent-cloud-staging' : 'agent-cloud';
-  const variables = { version, environment, origin, marketplaceName, repository: config.repository, repositorySlug: config.repository.replace('https://github.com/', ''), displayName: config.plugin.displayName, stagingFlag: environment === 'staging' ? ' --staging' : '' };
+  // Installs follow this branch, never a version tag, so marketplace updates reach each new release.
+  const variables = { version, environment, origin, marketplaceName, channel: 'stable', repository: config.repository, repositorySlug: config.repository.replace('https://github.com/', ''), displayName: config.plugin.displayName, stagingFlag: environment === 'staging' ? ' --staging' : '' };
   const render = path => Buffer.from(read(path).toString().replace(/\{\{([A-Za-z]+)\}\}/g, (_match, key) => {
     if (!(key in variables)) throw Error(`Unknown documentation variable: ${key}`);
     return variables[key];

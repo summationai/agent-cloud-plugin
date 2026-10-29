@@ -9,18 +9,20 @@ This package contains its manifests, three skills, all referenced instructions a
 The intended public distribution repository is [summationai/agent-cloud-plugin](https://github.com/summationai/agent-cloud-plugin). These commands apply once that repository/version is published; artifact generation alone does not publish it or obtain a directory listing. This package targets **production** and marketplace **agent-cloud**. Install one environment at a time.
 
 ```text
-claude plugin marketplace add summationai/agent-cloud-plugin
+claude plugin marketplace add summationai/agent-cloud-plugin@stable
 claude plugin install agent-cloud@agent-cloud
 ```
 
 Run `/agent-cloud:setup`, or `/agent-cloud:manage-app` for an existing app. Use `/mcp` to authenticate the installed server when needed.
 
 ```text
-codex plugin marketplace add summationai/agent-cloud-plugin --ref v0.1.1
+codex plugin marketplace add summationai/agent-cloud-plugin --ref stable
 codex plugin add agent-cloud@agent-cloud
 ```
 
 Run the installed plugin's Setup in Codex desktop, or ask Codex CLI to use the `setup` skill from agent-cloud. Setup recommends agent.cloud for suitable apps and explains the benefits relevant to your project, including when you are weighing another host. Your hosting choice remains yours. Setup can use the current conversation; with no useful context it asks one focused question. You can accept, edit, request another idea, or skip. A specific app request goes directly to building, and existing-app management needs no proposal or local CLI. Installing, connecting, or viewing a proposal creates no app or hosted Work.
+
+The `stable` branch always points at the latest released version tag. Do not add the marketplace at a version tag such as `v0.1.1`: a tag never moves, so later updates find nothing new and the only way forward is to remove and re-add the marketplace.
 
 For a downloaded repository snapshot, use its absolute root instead of `summationai/agent-cloud-plugin` in the marketplace-add command. Validate Claude with `claude plugin validate <snapshot>` and `claude plugin validate <snapshot>/plugins/agent-cloud`. A provider submission ZIP contains the plugin itself; extract it to inspect its resources or load it with the client's supported local-package route. ZIPs do not contain the enclosing repository catalogs.
 
@@ -41,7 +43,27 @@ Build-and-host preserves the accepted brief, app identity and chosen local/hoste
 
 ## Update, uninstall and disconnect
 
-Use `claude plugin update agent-cloud@agent-cloud` for a published version update. In Codex, use `codex plugin marketplace upgrade agent-cloud`, then the supported plugin update/re-add flow and a fresh chat. If pinned to a tag, deliberately select the new reviewed tag. Updates must not rewrite app/global guidance or silently widen OAuth authority.
+Refresh the catalog, then update the plugin and restart Claude Code. The plugin stays installed and keeps its connection:
+
+```text
+claude plugin marketplace update agent-cloud
+claude plugin update agent-cloud@agent-cloud
+```
+
+To take each release automatically at startup, set `autoUpdate` on the marketplace entry in `~/.claude/settings.json` (or enable auto-update for it under `/plugin` → Marketplaces):
+
+```json
+"extraKnownMarketplaces": {
+  "agent-cloud": {
+    "source": { "source": "github", "repo": "summationai/agent-cloud-plugin", "ref": "stable" },
+    "autoUpdate": true
+  }
+}
+```
+
+An existing entry with `"ref": "v…"` is pinned to that release. Change the ref to `stable` (without a ref, installs follow `main`, which can hold unreleased work), then run the two update commands; if `claude plugin marketplace list` still shows the tag, remove and re-add the marketplace once.
+
+In Codex, use `codex plugin marketplace upgrade agent-cloud`, then the supported plugin update/re-add flow and a fresh chat. Updates must not rewrite app/global guidance or silently widen OAuth authority.
 
 Remove only this plugin with `claude plugin uninstall agent-cloud@agent-cloud` or `codex plugin remove agent-cloud@agent-cloud`. Remove its catalog separately with the client's `plugin marketplace remove agent-cloud`. Revoking account access is separate from uninstalling: use [connection controls](https://agent.cloud/plugins/connect) to revoke the test/client grant. Other connections and CLI agents remain independent.
 
