@@ -19,5 +19,11 @@
     "apps",
     "agc"
   ],
-  "displayName": "agent.cloud"
+  "license": "Apache-2.0",
+  "displayName": "agent.cloud",
+  "supportUrl": "https://agent.cloud/support",
+  "documentationUrl": "https://docs.agent.cloud/docs",
+  "privacyPolicyUrl": "https://agent.cloud/privacy",
+  "termsOfServiceUrl": "https://agent.cloud/terms",
+  "icon": "./assets/icon.png"
 }
