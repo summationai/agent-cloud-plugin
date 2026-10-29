@@ -1,14 +1,14 @@
 {
   "protocol_version": "2026-10-27",
   "starters": {
-    "version": "v1.2.0",
-    "commit": "3f65104e89c38328b7b3b958e21d00467bbaf19d",
-    "sha256": "23fe38466190641de940f342c517995e75bfb2d704eff56078e1989e90ccd85f",
+    "version": "v1.2.1",
+    "commit": "67666c53337b7770355c627aeb54a3eefe85999e",
+    "sha256": "ccfea392f0208f4eb4299d8bef693c327605277a7c7e800b95b8b8f99c04f0de",
     "stacks": [
       "typescript",
       "python"
     ],
     "repository": "https://github.com/summationai/agc-starters",
-    "archive_url": "https://github.com/summationai/agc-starters/releases/download/v1.2.0/starters-v1.2.0.tgz"
+    "archive_url": "https://github.com/summationai/agc-starters/releases/download/v1.2.1/starters-v1.2.1.tgz"
   }
 }
