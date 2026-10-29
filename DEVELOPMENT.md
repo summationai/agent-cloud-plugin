@@ -29,8 +29,8 @@ After editing source or configuration, run the tests and `npm run sync:generated
 `npm run build` writes `dist/production/` containing a complete source repository export, both provider ZIPs, validation report and `SHA256SUMS`. `npm run build:staging` targets the separate staging service/catalog. To build one submission, use `npm run build -- --target openai` or `npm run build -- --target claude`. All target content and manifests are generated from the same source version.
 
 ```text
-npm run validate -- openai dist/production/submissions/agent-cloud-0.1.0-production-openai.zip
-npm run validate -- claude dist/production/submissions/agent-cloud-0.1.0-production-claude.zip
+npm run validate -- openai dist/production/submissions/agent-cloud-0.1.1-production-openai.zip
+npm run validate -- claude dist/production/submissions/agent-cloud-0.1.1-production-claude.zip
 ```
 
 Provider ZIPs contain only the installable plugin, readable runtime helper and resources; build tools, development tests and dependency files belong in this source repository. Every ZIP is decompressed and validated during build. Add `--release` after configuring approved licensing/listing values and review materials to enforce the selected targets' metadata gate. These checks do not establish public URL reachability, client acceptance or provider approval.

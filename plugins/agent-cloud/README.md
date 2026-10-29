@@ -16,7 +16,7 @@ claude plugin install agent-cloud@agent-cloud
 Run `/agent-cloud:setup`, or `/agent-cloud:manage-app` for an existing app. Use `/mcp` to authenticate the installed server when needed.
 
 ```text
-codex plugin marketplace add summationai/agent-cloud-plugin --ref v0.1.0
+codex plugin marketplace add summationai/agent-cloud-plugin --ref v0.1.1
 codex plugin add agent-cloud@agent-cloud
 ```
 
