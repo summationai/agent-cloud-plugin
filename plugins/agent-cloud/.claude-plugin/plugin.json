@@ -1,6 +1,6 @@
 {
   "name": "agent-cloud",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Host and run the apps your coding agent builds: one server with its own Postgres, migrations rehearsed on a branch of production, and a person's approval before live data changes. Set up agent.cloud, pick the right host for an app, then build, deploy and manage it from Claude Code or Codex with MCP and the agc CLI.",
   "author": {
     "name": "agent.cloud"
