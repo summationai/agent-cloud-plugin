@@ -18,3 +18,9 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npm run check:generated
+      - name: Release channel points at the released tag
+        if: github.ref == 'refs/heads/stable'
+        run: |
+          tag="v$(node -p 'require("./package.json").version')"
+          git fetch --no-tags --depth=1 origin "refs/tags/$tag:refs/tags/$tag"
+          test "$(git rev-parse "$tag^{commit}")" = "$(git rev-parse HEAD)"

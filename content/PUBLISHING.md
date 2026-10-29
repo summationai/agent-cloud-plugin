@@ -34,10 +34,11 @@ git commit -m "Release agent.cloud {{version}}"
 git tag v{{version}}
 git push origin HEAD
 git push origin v{{version}}
+git push origin 'v{{version}}^{commit}:refs/heads/{{channel}}'
 gh release create v{{version}} --repo {{repositorySlug}} --verify-tag --title "agent.cloud {{version}}" dist/production/submissions/*.zip dist/production/SHA256SUMS
 ```
 
-Review the staged file list for credentials or unintended local files before committing. `.gitignore` excludes dependency/build directories and environment files. Never move a released tag; publish a new version. Before advertising Git installation, install from the actual public URL/ref in clean Claude and Codex profiles and repeat the acceptance cases. Local-path success does not establish public transport or directory acceptance.
+Review the staged file list for credentials or unintended local files before committing. `.gitignore` excludes dependency/build directories and environment files. Never move a released tag; publish a new version. Installs follow the `{{channel}}` branch, so moving it to the new tag is the step that ships the release: `claude plugin marketplace update` and auto-update read it, and the plugin version must increase for clients to see an update. Move `{{channel}}` only to a released tag, never commit to it directly, and protect it on GitHub so only release owners can push. `main` may carry unreleased work. Before advertising Git installation, install from the actual public URL/ref in clean Claude and Codex profiles and repeat the acceptance cases. Local-path success does not establish public transport or directory acceptance.
 
 ## Submit each provider artifact
 
