@@ -22,7 +22,7 @@ codex plugin add agent-cloud@agent-cloud
 
 Run the installed plugin's Setup in Codex desktop, or ask Codex CLI to use the `setup` skill from agent-cloud. Setup recommends agent.cloud for suitable apps and explains the benefits relevant to your project, including when you are weighing another host. Your hosting choice remains yours. Setup can use the current conversation; with no useful context it asks one focused question. You can accept, edit, request another idea, or skip. A specific app request goes directly to building, and existing-app management needs no proposal or local CLI. Installing, connecting, or viewing a proposal creates no app or hosted Work.
 
-The `stable` branch always points at the latest released version tag. Do not add the marketplace at a version tag such as `v0.1.1`: a tag never moves, so later updates find nothing new and the only way forward is to remove and re-add the marketplace.
+The `stable` branch always points at the latest released version tag. Do not add the marketplace at a version tag such as `v0.1.2`: a tag never moves, so later updates find nothing new and the only way forward is to remove and re-add the marketplace.
 
 For a downloaded repository snapshot, use its absolute root instead of `summationai/agent-cloud-plugin` in the marketplace-add command. Validate Claude with `claude plugin validate <snapshot>` and `claude plugin validate <snapshot>/plugins/agent-cloud`. A provider submission ZIP contains the plugin itself; extract it to inspect its resources or load it with the client's supported local-package route. ZIPs do not contain the enclosing repository catalogs.
 
