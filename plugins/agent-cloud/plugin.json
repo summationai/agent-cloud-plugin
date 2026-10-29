@@ -31,6 +31,9 @@
         "developerName": "agent.cloud",
         "category": "Developer Tools",
         "websiteURL": "https://agent.cloud",
+        "supportURL": "https://agent.cloud/support",
+        "privacyPolicyURL": "https://agent.cloud/privacy",
+        "termsOfServiceURL": "https://agent.cloud/terms",
         "composerIcon": "./assets/icon.png",
         "logo": "./assets/icon.png"
       }

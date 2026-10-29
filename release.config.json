@@ -17,10 +17,10 @@
       "name": "agent.cloud"
     },
     "homepage": "https://agent.cloud",
-    "supportURL": null,
+    "supportURL": "https://agent.cloud/support",
     "documentationURL": "https://docs.agent.cloud/docs",
-    "privacyPolicyURL": null,
-    "termsOfServiceURL": null,
+    "privacyPolicyURL": "https://agent.cloud/privacy",
+    "termsOfServiceURL": "https://agent.cloud/terms",
     "icon": "release-assets/icon.png",
     "keywords": [
       "agent-cloud",

@@ -31,17 +31,10 @@
   ],
   "submission_metadata_gaps": {
     "openai": [
-      "Configure plugin.supportURL.",
-      "Configure plugin.privacyPolicyURL.",
-      "Configure plugin.termsOfServiceURL.",
       "Supply the reviewer-accessible demo recording URL.",
       "Supply exactly five positive and three negative MCP review cases."
     ],
-    "claude": [
-      "Configure plugin.supportURL.",
-      "Configure plugin.privacyPolicyURL.",
-      "Configure plugin.termsOfServiceURL."
-    ]
+    "claude": []
   },
   "publication": {
     "performed_by_build": false,
