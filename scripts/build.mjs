@@ -2,7 +2,7 @@
 // PLG-1/29/30: one versioned source -> one public repository + provider ZIPs.
 import { createHash } from 'node:crypto';
 import { lstatSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, posix, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { zipSync } from 'fflate';
 import { loadReleaseConfig } from './release-config.mjs';
@@ -17,6 +17,17 @@ const json = value => Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const sorted = map => [...map].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
 const stat = path => { try { return lstatSync(path); } catch (error) { if (error.code === 'ENOENT') return undefined; throw error; } };
+// One reference as a section of a skill: its title and headings two levels down, and its relative paths
+// rewritten from references/ to the skill's folder. JSON goes in a fenced block under its file name.
+export function inlineReference(file, text, skillDir) {
+  if (file.endsWith('.json')) return `### ${file}\n\n\`\`\`json\n${text.trimEnd()}\n\`\`\``;
+  let fenced = false;
+  return text.trimEnd().split('\n').map((line, index) => {
+    if (line.startsWith('```')) fenced = !fenced;
+    if (fenced || !/^#{1,4} /.test(line)) return line.replace(/(\]\(|`)(\.\.\/[^)`\s]+)/g, (_match, lead, target) => lead + posix.relative(skillDir, posix.join('references', target)));
+    return index === 0 ? `### ${line.replace(/^# /, '')} (\`${file}\`)` : `##${line}`;
+  }).join('\n');
+}
 
 /** @param {{ environment?: string, out?: string, sourceRoot?: string, configPath?: string, target?: string, release?: boolean }} [options] */
 export function buildPackage({ environment = 'production', out, sourceRoot = packageRoot, configPath, target = 'all', release = false } = {}) {
@@ -37,19 +48,32 @@ export function buildPackage({ environment = 'production', out, sourceRoot = pac
   const name = 'agent-cloud', marketplaceName = config.marketplace.name + (environment === 'staging' ? '-staging' : '');
   const serverName = environment === 'staging' ? 'agent-cloud-staging' : 'agent-cloud';
   // Installs follow this branch, never a version tag, so marketplace updates reach each new release.
-  const variables = { version, environment, origin, marketplaceName, channel: 'stable', repository: config.repository, repositorySlug: config.repository.replace('https://github.com/', ''), displayName: config.plugin.displayName, stagingFlag: environment === 'staging' ? ' --staging' : '' };
+  const variables = { version, protocolVersion, environment, origin, marketplaceName, channel: 'stable', repository: config.repository, repositorySlug: config.repository.replace('https://github.com/', ''), displayName: config.plugin.displayName, stagingFlag: environment === 'staging' ? ' --staging' : '' };
   const render = path => Buffer.from(read(path).toString().replace(/\{\{([A-Za-z]+)\}\}/g, (_match, key) => {
     if (!(key in variables)) throw Error(`Unknown documentation variable: ${key}`);
     return variables[key];
   }));
   // Never recursively copy the source directory, fixtures, dependencies or history.
-  const shared = new Map(sources.map(path => [path, read(path)]));
+  const shared = new Map(sources.map(path => [path, path.startsWith('references/') ? render(path) : read(path)]));
   for (const file of ['README.md', 'CLIENTS.md', 'ACCEPTANCE.md']) shared.set(file, render(`content/${file}`));
   const licenseStatus = Buffer.from(`# Licensing\n\n${config.license.id && license ? `Configured identifier: ${config.license.id}. The reviewed license text is included in LICENSE.` : 'Licensing has not been configured. This candidate does not invent a license or grant public redistribution rights. The release owner must supply the approved identifier and license text before publishing.'}\n`);
   shared.set('LICENSE-STATUS.md', licenseStatus);
   if (license) shared.set('LICENSE', license);
   if (icon) shared.set(icon.path, icon.bytes);
   shared.set('references/starters.json', json(starters));
+  // Claude Code asks before reading any file outside the working directory, the plugin's own included, so each
+  // skill carries the references it links to. The reference files still ship for people and other clients.
+  for (const skill of ['setup', 'build-and-host', 'manage-app']) {
+    const path = `skills/${skill}/SKILL.md`, used = [];
+    const text = shared.get(path).toString()
+      .replace(/\[([^\]]+)\]\(\.\.\/\.\.\/references\/([a-z-]+\.(?:md|json))\)/g, (_match, label, file) => {
+        if (!used.includes(file)) used.push(file);
+        return `${label} (\`${file}\` under References below)`;
+      })
+      .replace(/\[([^\]]+)\]\(\.\.\/([a-z-]+)\/SKILL\.md\)/g, (_match, label, other) => `${label} (the ${other} skill)`);
+    if (!used.length) continue;
+    shared.set(path, Buffer.from(`${text.trimEnd()}\n\n## References\n\nThese are this skill's references in full. Use them here instead of opening the plugin's files.\n\n${used.map(file => inlineReference(file, shared.get(`references/${file}`).toString(), `skills/${skill}`)).join('\n\n')}\n`));
+  }
   const identity = { name, version, description: config.plugin.description, author: config.plugin.author, homepage: config.plugin.homepage, repository: config.repository, keywords: config.plugin.keywords, ...(config.license.id ? { license: config.license.id } : {}) };
   const openai = new Map([
     ['plugin.json', json({ $schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', ...identity, extensions: { 'com.openai': {

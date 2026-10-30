@@ -77,7 +77,15 @@ test('PLG-1, PLG-29: both client formats share versioned workflows, complete loc
     }
     for (const skill of ['setup', 'build-and-host', 'manage-app']) {
       const text = readFileSync(join(built.plugin, `skills/${skill}/SKILL.md`), 'utf8');
-      assert.equal(text, readFileSync(join(root, `skills/${skill}/SKILL.md`), 'utf8'));
+      const source = readFileSync(join(root, `skills/${skill}/SKILL.md`), 'utf8');
+      // Each skill carries its references, so the client never asks to read the plugin's own files.
+      assert.ok(text.startsWith(source.slice(0, source.indexOf('\n---\n', 4) + 5)), `${skill} keeps its metadata`);
+      assert.doesNotMatch(text, /\]\((?:\.\.\/)+(?:references\/|[a-z-]+\/SKILL\.md)/, `${skill} links no plugin file`);
+      for (const [, file] of source.matchAll(/\]\(\.\.\/\.\.\/references\/([a-z-]+\.(?:md|json))\)/g)) {
+        const reference = readFileSync(join(built.plugin, `references/${file}`), 'utf8');
+        assert.ok(text.includes(file.endsWith('.json') ? reference.trimEnd() : `### ${reference.split('\n')[0].slice(2)} (\`${file}\`)`), `${skill} inlines ${file}`);
+      }
+      assert.doesNotMatch(text, /\{\{[A-Za-z]+\}\}/);
       const frontmatter = text.match(/^---\n([\s\S]*?)\n---\n/);
       assert.ok(frontmatter, `${skill} requires skill metadata`);
       const parsed = parseYaml(frontmatter[1]);

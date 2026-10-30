@@ -55,8 +55,8 @@
       "bytes": 7091
     },
     "references/connection.md": {
-      "sha256": "222f9c56cec4df952d33f8ea6bbec09e92b00f88020ea2396a6c13c75bbe77a0",
-      "bytes": 2996
+      "sha256": "c1d34800ce2602ae87b35f49e81d1205d1b6493fcde14b2393a1a3dfa4fedad8",
+      "bytes": 2963
     },
     "references/continuity.md": {
       "sha256": "e35f544e2aaa790057892f3920a47de9f127a13978b2246acf0ccb2a3505f868",
@@ -79,16 +79,16 @@
       "bytes": 4163
     },
     "skills/build-and-host/SKILL.md": {
-      "sha256": "472a4b6b9ae75076718b574699a72e6ad69621fe4a77680a05ff07715017afe1",
-      "bytes": 5418
+      "sha256": "91094b6c4137b60a789f06d469be649c43cee654ec5d555494b890826a8efc21",
+      "bytes": 16662
     },
     "skills/manage-app/SKILL.md": {
-      "sha256": "d151429809428ed8a92c6604eb473a2b1d15ef27cd3c9778cbe69aaaf5f30899",
-      "bytes": 2617
+      "sha256": "1b46b7db23f2fa67cf4d735ab0461aca28ab5430a031a508642ccf156868906d",
+      "bytes": 7595
     },
     "skills/setup/SKILL.md": {
-      "sha256": "ba999e40a150224b089118f0516cd7bb16ec470e5c3d6f234f2d68db016317b9",
-      "bytes": 6620
+      "sha256": "0eaff546ec552eb2e9987669368de722abd82432c3c1e9cf298f2bef049d2ebf",
+      "bytes": 15559
     }
   }
 }
