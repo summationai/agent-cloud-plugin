@@ -30,20 +30,20 @@ git status --short
 git diff --check
 git add .
 git diff --cached --stat
-git commit -m "Release agent.cloud 0.1.2"
-git tag v0.1.2
+git commit -m "Release agent.cloud 0.2.0"
+git tag v0.2.0
 git push origin HEAD
-git push origin v0.1.2
-git push origin 'v0.1.2^{commit}:refs/heads/stable'
-gh release create v0.1.2 --repo summationai/agent-cloud-plugin --verify-tag --title "agent.cloud 0.1.2" dist/production/submissions/*.zip dist/production/SHA256SUMS
+git push origin v0.2.0
+git push origin 'v0.2.0^{commit}:refs/heads/stable'
+gh release create v0.2.0 --repo summationai/agent-cloud-plugin --verify-tag --title "agent.cloud 0.2.0" dist/production/submissions/*.zip dist/production/SHA256SUMS
 ```
 
 Review the staged file list for credentials or unintended local files before committing. `.gitignore` excludes dependency/build directories and environment files. Never move a released tag; publish a new version. Installs follow the `stable` branch, so moving it to the new tag is the step that ships the release: `claude plugin marketplace update` and auto-update read it, and the plugin version must increase for clients to see an update. Move `stable` only to a released tag, never commit to it directly, and protect it on GitHub so only release owners can push. `main` may carry unreleased work. Before advertising Git installation, install from the actual public URL/ref in clean Claude and Codex profiles and repeat the acceptance cases. Local-path success does not establish public transport or directory acceptance.
 
 ## Submit each provider artifact
 
-**OpenAI:** upload `dist/production/submissions/agent-cloud-0.1.2-production-openai.zip`. Its root contains portable `plugin.json`, `mcp.json`, skills and every runtime resource. Use the verified publishing identity and [plugin submission dashboard](https://developers.openai.com/plugins/deploy/submission). Include the remote HTTPS MCP configuration in the initial ZIP, complete domain/authentication/tool scans, and supply review materials. Enter reviewer credentials only in the secure dashboard. Follow the applicable review route for desktop helper execution; remote-MCP review does not establish every local capability.
+**OpenAI:** upload `dist/production/submissions/agent-cloud-0.2.0-production-openai.zip`. Its root contains portable `plugin.json`, `mcp.json`, skills and every runtime resource. Use the verified publishing identity and [plugin submission dashboard](https://developers.openai.com/plugins/deploy/submission). Include the remote HTTPS MCP configuration in the initial ZIP, complete domain/authentication/tool scans, and supply review materials. Enter reviewer credentials only in the secure dashboard. Follow the applicable review route for desktop helper execution; remote-MCP review does not establish every local capability.
 
-**Claude:** use `dist/production/submissions/agent-cloud-0.1.2-production-claude.zip`. Its root contains `.claude-plugin/plugin.json`, `.mcp.json`, skills and all runtime resources. Extract it and run `claude plugin validate <extracted-plugin> --strict`, plus directory-profile checks when preparing that submission. The repository's `.claude-plugin/marketplace.json` is the own-marketplace route; [Anthropic directory submission](https://claude.ai/directory/manage) and official-marketplace placement are separate. Follow [publishing guidance](https://code.claude.com/docs/en/plugins/publish) and current portal upload requirements.
+**Claude:** use `dist/production/submissions/agent-cloud-0.2.0-production-claude.zip`. Its root contains `.claude-plugin/plugin.json`, `.mcp.json`, skills and all runtime resources. Extract it and run `claude plugin validate <extracted-plugin> --strict`, plus directory-profile checks when preparing that submission. The repository's `.claude-plugin/marketplace.json` is the own-marketplace route; [Anthropic directory submission](https://claude.ai/directory/manage) and official-marketplace placement are separate. Follow [publishing guidance](https://code.claude.com/docs/en/plugins/publish) and current portal upload requirements.
 
 `dist/production/release-report.json` distinguishes structural validation from unresolved metadata. Source publication, uploaded/submitted, approved/listed and published package states are recorded separately. Source repository availability alone is not provider approval or a successful connected Setup/publishing journey.
