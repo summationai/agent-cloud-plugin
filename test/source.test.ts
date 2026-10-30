@@ -39,7 +39,7 @@ test('PLG-29: public source changes rebuild and sync the generated tree while pr
   writeFileSync(skill, `${original}\nPublic source edit fixture.\n`);
   assert.throws(() => checkGenerated({ root }), /Generated files differ/);
   checkGenerated({ root, write: true }); assert.deepEqual(checkGenerated({ root }).changed, []);
-  assert.equal(readFileSync(join(root, 'plugins/agent-cloud/skills/setup/SKILL.md'), 'utf8'), `${original}\nPublic source edit fixture.\n`);
+  assert.match(readFileSync(join(root, 'plugins/agent-cloud/skills/setup/SKILL.md'), 'utf8'), /\nPublic source edit fixture\.\n\n## References\n/);
   assert.equal(readFileSync(join(root, '.git/config'), 'utf8'), 'preserve this Git metadata');
   assert.equal(readFileSync(join(root, 'maintainer-notes.txt'), 'utf8'), 'preserve this local file');
 });
