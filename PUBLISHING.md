@@ -68,17 +68,30 @@ Review the staged file list for credentials or unintended local files before com
   - A tag at another commit stops the run with a failure.
   - Publishes run one at a time, in one concurrency group: a second bump queues behind the first and is never cancelled.
 - **PUB-9: A bad release rolls back by moving `stable` to the previous tag, then a fix goes forward.** A release owner runs the workflow's rollback (`workflow_dispatch` with `rollback_to: v<older>`, behind the `release` environment). It moves `stable` back to that tag's commit, and only to a released, non-pre-release tag older than `stable`. It then reads `stable` back as PUB-7 does. The bad release and its tag stay: tags never move. The release is marked a pre-release with a note naming the rollback.
-  - Installs and `claude plugin marketplace update` read `stable`, so new installs get the older version at once.
-  - A client that already updated keeps the bad version until a higher one ships, because clients update only when the version goes up. So a rollback is followed by a fix-forward: a pull request that reverts the change and bumps the patch version, which publishes by PUB-1.
-- **PUB-10: The least access that does the job.** Only the publish and rollback jobs get `contents: write`, through `GITHUB_TOKEN`; every other job stays `contents: read`, as `check.yml` is now. No other secret is used. A ruleset protects `stable` so that only this workflow and the release owners can push to it, and nobody commits to it directly. `main`'s protection is unchanged.
+  - Installs read `stable`, so a new install gets the older version at once.
+  - A client that already updated gets the older version back on its next update, even though the version went down. In Claude Code that's `claude plugin marketplace update` then `claude plugin update`; in Codex, `codex plugin marketplace upgrade` then re-adding the plugin. Both were proven on a scratch repository on 1 Nov 2026 (below).
+  - Background auto-update isn't proven to follow a lower version. So a rollback is still followed by a fix-forward: a pull request that reverts the change and bumps the patch version, which publishes by PUB-1.
+- **PUB-10: The least access that does the job.**
+  - Only the publish job gets `contents: write`, through `GITHUB_TOKEN`, for the tag and the release. Every other job stays `contents: read`, as `check.yml` is now.
+  - A ruleset on `stable` restricts updates, deletions and force pushes. Its bypass list holds exactly two entries: the repository's one deploy key, and the release owners' team.
+  - `GITHUB_TOKEN` can't move `stable`. GitHub refuses GitHub Actions as a ruleset bypass actor, so the workflow pushes `stable` with that deploy key instead.
+  - The deploy key's private half is the workflow's only other secret, `STABLE_DEPLOY_KEY`. It's a secret of a `stable-push` environment that only `main` may deploy to, so a branch or a fork can't read it. The move and the rollback's move are the only steps that use it.
+  - `main`'s protection is unchanged.
 - **PUB-11: Each run says what it did.** The job summary lists the version, the tag and commit, the release URL, each asset's SHA-256, whether a release owner was asked (and who approved), and `stable`'s move from one commit to the other. A rollback lists the same.
 
 **Out of scope.** The provider submissions below (OpenAI's dashboard, Anthropic's directory) stay a person's. So does anything a reviewer must enter. This spec doesn't publish to npm or change how the source is built.
 
-**Before it's built (prove the outside service, on a scratch repository).**
-- A client that installed version N, from a marketplace whose `stable` moves back to N−1, keeps N and doesn't downgrade. PUB-9's fix-forward depends on this.
-- `GITHUB_TOKEN` can push `stable` under a ruleset that bypasses only this workflow.
-- An environment approval holds the job until a required reviewer approves.
+**The outside service, as proven on scratch repositories (1 Nov 2026).**
+- **Clients follow `stable` down (PUB-9).**
+  - Claude Code installed proof-plugin 1.0.1 from a marketplace at `stable`. Then `stable` moved back to 1.0.0, and `claude plugin marketplace update` plus `claude plugin update` answered "updated from 1.0.1 to 1.0.0".
+  - Codex, after `codex plugin marketplace upgrade` and re-adding the plugin, had 1.0.0 installed in place of 1.0.1.
+  - Background auto-update wasn't tested.
+- **`GITHUB_TOKEN` can't move a protected `stable`; a deploy key can (PUB-10).**
+  - Adding GitHub Actions (app 15368) as a ruleset bypass was refused, on a personal repository and on an organization's: "Actor GitHub Actions integration must be part of the ruleset source or owner organization".
+  - A `GITHUB_TOKEN` push was refused with "GH013: Repository rule violations found for refs/heads/stable. Cannot update this protected ref", and so was a repository admin's own push.
+  - With the ruleset's bypass set to the deploy key, a workflow pushing with that key, read from a `main`-only environment's secret, fast-forwarded `stable` and force-moved it back. GitHub answered "Bypassed rule violations".
+- **A push made with `GITHUB_TOKEN` starts no workflow (PUB-7).** A workflow on `push: branches: [stable]` didn't run.
+- **An environment approval holds the job (PUB-4).** A job on a `release` environment with a required reviewer sat in `waiting` until the reviewer approved it, then ran.
 
 **How each rule is tested.** The workflow's decisions live in `scripts/release.mjs` as functions that take plain inputs, tested in `test/release-workflow.test.ts` by rule ID. The workflow file only calls them and the commands above.
 - PUB-1: version changed or unchanged against the first parent; a tag that already exists; the manual re-run.
@@ -89,7 +102,7 @@ Review the staged file list for credentials or unintended local files before com
 - PUB-6: a pre-release version never moves `stable`.
 - PUB-8: each partial state resumes from where it stopped: a tag only; a tag and its release; a tag, its release and `stable` moved (nothing left to do). A tag at another commit fails, and the concurrency group never cancels.
 - PUB-9: rollback only to an older, released, non-pre-release tag, and refused otherwise.
-- PUB-10: the workflow's `permissions` per job, read from the YAML.
+- PUB-10: the workflow's `permissions` per job, the jobs on the `stable-push` environment, and `STABLE_DEPLOY_KEY` as the only secret and only in the channel-moving steps, all read from the YAML.
 - PUB-11: the summary's fields.
 
 The whole workflow is then rehearsed end to end on a scratch repository before it runs here: a publish, a run stopped after its tag and then resumed, and a rollback.
