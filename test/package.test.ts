@@ -52,9 +52,9 @@ test('PLG-1, PLG-29: both client formats share versioned workflows, complete loc
     const origin = environment === 'staging' ? 'https://staging-agent.cloud' : 'https://agent.cloud';
     const name = environment === 'staging' ? 'agent-cloud-staging' : 'agent-cloud';
     assert.deepEqual(json(join(built.plugin, 'mcp.json')).mcpServers, {
-      [name]: { type: 'streamable-http', url: `${origin}/mcp` },
+      [name]: { type: 'streamable-http', url: `${origin}/mcp` }, canvas: { type: 'streamable-http', url: 'https://canvas-e2e.agent.cloud/mcp' },
     });
-    assert.deepEqual(json(join(built.plugin, '.mcp.json')), { mcpServers: { [name]: { type: 'http', url: `${origin}/mcp` } } });
+    assert.deepEqual(json(join(built.plugin, '.mcp.json')), { mcpServers: { [name]: { type: 'http', url: `${origin}/mcp` }, canvas: { type: 'http', url: 'https://canvas-e2e.agent.cloud/mcp' } } });
     for (const catalog of ['.agents/plugins/marketplace.json', '.claude-plugin/marketplace.json']) {
       const market = json(join(built.marketplace, catalog));
       assert.equal(market.name, releaseConfig.marketplace.name + (environment === 'staging' ? '-staging' : '')); assert.equal(market.plugins.length, 1);

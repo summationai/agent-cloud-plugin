@@ -1,5 +1,5 @@
 {
-  "version": "0.2.1",
+  "version": "0.3.0",
   "environment": "production",
   "repository": "https://github.com/summationai/agent-cloud-plugin",
   "generated": true,
@@ -7,24 +7,24 @@
     {
       "target": "combined",
       "valid": true,
-      "files": 20,
-      "version": "0.2.1",
+      "files": 22,
+      "version": "0.3.0",
       "protocol_version": "2026-10-27",
       "environment": "production"
     },
     {
       "target": "openai",
       "valid": true,
-      "files": 18,
-      "version": "0.2.1",
+      "files": 20,
+      "version": "0.3.0",
       "protocol_version": "2026-10-27",
       "environment": "production"
     },
     {
       "target": "claude",
       "valid": true,
-      "files": 18,
-      "version": "0.2.1",
+      "files": 20,
+      "version": "0.3.0",
       "protocol_version": "2026-10-27",
       "environment": "production"
     }

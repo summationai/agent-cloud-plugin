@@ -3,6 +3,10 @@
     "agent-cloud": {
       "type": "http",
       "url": "https://agent.cloud/mcp"
+    },
+    "canvas": {
+      "type": "http",
+      "url": "https://canvas-e2e.agent.cloud/mcp"
     }
   }
 }
