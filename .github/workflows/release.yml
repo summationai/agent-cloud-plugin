@@ -17,6 +17,9 @@ permissions:
 concurrency:
   group: release
   cancel-in-progress: false
+env:
+  # github.com's ed25519 host key, as GitHub's /meta API publishes it: the deploy-key pushes trust it and nothing else.
+  GITHUB_HOST_KEY: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
 jobs:
   plan:
     if: ${{ !inputs.rollback_to }}
@@ -60,6 +63,8 @@ jobs:
     needs: [plan, owner]
     if: ${{ always() && needs.plan.outputs.publish == 'true' && (needs.owner.result == 'success' || needs.owner.result == 'skipped') }}
     runs-on: ubuntu-24.04
+    # PUB-10: the main-only environment that holds STABLE_DEPLOY_KEY, the one key stable's ruleset lets through.
+    environment: stable-push
     permissions:
       contents: write
     env:
@@ -109,14 +114,23 @@ jobs:
             gh release edit "$TAG" --prerelease --notes "Not shipped: its assets didn't verify after upload, so stable stayed where it was."
             exit 1
           fi
-      # PUB-7: stable moves only now, as a fast-forward, and is read back: a GITHUB_TOKEN push starts no check.yml.
+      # PUB-7, PUB-10: stable moves only now, as a fast-forward with the deploy key, and is read back (a push starts no check.yml).
       - name: Move stable
         id: channel
         if: ${{ needs.plan.outputs.prerelease != 'true' }}
+        env:
+          STABLE_DEPLOY_KEY: ${{ secrets.STABLE_DEPLOY_KEY }}
         run: |
           from=$(git ls-remote origin refs/heads/stable | cut -f1)
           echo "from=$from" >> "$GITHUB_OUTPUT"
-          if [ "$from" != "$GITHUB_SHA" ]; then git push origin "$GITHUB_SHA:refs/heads/stable"; fi
+          if [ "$from" != "$GITHUB_SHA" ]; then
+            ssh_dir="$RUNNER_TEMP/stable-ssh"; mkdir -m 700 "$ssh_dir"
+            printf '%s\n' "$STABLE_DEPLOY_KEY" > "$ssh_dir/key"; chmod 600 "$ssh_dir/key"
+            echo "github.com $GITHUB_HOST_KEY" > "$ssh_dir/known_hosts"
+            GIT_SSH_COMMAND="ssh -i $ssh_dir/key -o IdentitiesOnly=yes -o UserKnownHostsFile=$ssh_dir/known_hosts -o StrictHostKeyChecking=yes" \
+              git push "git@github.com:$GITHUB_REPOSITORY.git" "$GITHUB_SHA:refs/heads/stable"
+            rm -rf "$ssh_dir"
+          fi
           node scripts/release.mjs channel --read "$(git ls-remote origin refs/heads/stable | cut -f1)" --want "$GITHUB_SHA"
       # PUB-11: what the run did.
       - name: Summary
@@ -128,11 +142,22 @@ jobs:
           OWNER: ${{ needs.owner.result == 'success' && format('"approved on the release environment ({0})"', needs.plan.outputs.changes) || 'null' }}
           CHANNEL: ${{ steps.channel.outcome == 'success' && format('{{"from":"{0}","to":"{1}"}}', steps.channel.outputs.from, github.sha) || 'null' }}
 
-  # PUB-9: a release owner moves stable back to an older released tag; tags never move.
-  rollback:
+  # PUB-9: a release owner approves on the release environment; then stable moves back to an older released tag with the
+  # deploy key (PUB-10). Tags never move.
+  rollback-approve:
     if: ${{ inputs.rollback_to }}
     runs-on: ubuntu-24.04
     environment: release
+    steps:
+      - run: |
+          echo "A release owner approved moving stable back to $TO."
+        env:
+          TO: ${{ inputs.rollback_to }}
+
+  rollback:
+    needs: rollback-approve
+    runs-on: ubuntu-24.04
+    environment: stable-push
     permissions:
       contents: write
     env:
@@ -142,19 +167,27 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 24.22.1
           cache: npm
       - run: npm ci
       - name: Move stable back
+        env:
+          STABLE_DEPLOY_KEY: ${{ secrets.STABLE_DEPLOY_KEY }}
         run: |
           from=$(git ls-remote origin refs/heads/stable | cut -f1)
           bad=$(git show "$from:package.json" | node -p 'JSON.parse(require("fs").readFileSync(0)).version')
           released=$(gh release list --limit 200 --json tagName --jq '[.[].tagName] | join(",")')
           node scripts/release.mjs rollback --to "$TO" --released "$released" --channel-version "$bad" > "$RUNNER_TEMP/target"
           commit=$(sed -n 's/^commit=//p' "$RUNNER_TEMP/target")
-          git push --force origin "$commit:refs/heads/stable"
+          ssh_dir="$RUNNER_TEMP/stable-ssh"; mkdir -m 700 "$ssh_dir"
+          printf '%s\n' "$STABLE_DEPLOY_KEY" > "$ssh_dir/key"; chmod 600 "$ssh_dir/key"
+          echo "github.com $GITHUB_HOST_KEY" > "$ssh_dir/known_hosts"
+          GIT_SSH_COMMAND="ssh -i $ssh_dir/key -o IdentitiesOnly=yes -o UserKnownHostsFile=$ssh_dir/known_hosts -o StrictHostKeyChecking=yes" \
+            git push --force "git@github.com:$GITHUB_REPOSITORY.git" "$commit:refs/heads/stable"
+          rm -rf "$ssh_dir"
           node scripts/release.mjs channel --read "$(git ls-remote origin refs/heads/stable | cut -f1)" --want "$commit"
           gh release edit "v$bad" --prerelease --notes "Rolled back: stable moved back to $TO. A fix ships as a higher version."
           node scripts/release.mjs summary --json "{\"what\":\"Rolled back from\",\"version\":\"$bad\",\"tag\":\"$TO\",\"commit\":\"$commit\",\"channel\":{\"from\":\"$from\",\"to\":\"$commit\"}}"

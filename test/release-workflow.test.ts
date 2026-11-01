@@ -129,16 +129,28 @@ test('PUB-9: a rollback moves stable only to an older, released, non-pre-release
   assert.match(rollbackTarget({ to: 'v0.1.2', tags, released, channelVersion: '0.2.1' }).why!, /no GitHub release/);
   assert.match(rollbackTarget({ to: 'v9.9.9', tags, released, channelVersion: '0.2.1' }).why!, /isn't a tag here/);
   assert.match(rollbackTarget({ to: 'stable', tags, released, channelVersion: '0.2.1' }).why!, /isn't a version tag/);
-  assert.equal(workflow.jobs.rollback.environment, 'release');
-  assert.match(workflow.jobs.rollback.steps.at(-1).run, /release\.mjs channel --read[\s\S]*--prerelease/);
+  assert.equal(workflow.jobs['rollback-approve'].environment, 'release', 'a release owner approves first');
+  assert.equal(workflow.jobs.rollback.needs, 'rollback-approve');
+  assert.match(workflow.jobs.rollback.steps.at(-1).run, /git push --force[\s\S]*release\.mjs channel --read[\s\S]*--prerelease/);
 });
 
-test('PUB-10: only the publish and rollback jobs may write, through GITHUB_TOKEN', () => {
+test('PUB-10: only publish and rollback write; only the deploy key on the main-only environment moves stable', () => {
   assert.deepEqual(workflow.permissions, { contents: 'read' });
-  const writers = Object.entries(workflow.jobs).filter(([, job]: [string, any]) => job.permissions?.contents === 'write').map(([name]) => name);
-  assert.deepEqual(writers.sort(), ['publish', 'rollback']);
+  const jobs = Object.entries(workflow.jobs) as [string, any][];
+  assert.deepEqual(jobs.filter(([, job]) => job.permissions?.contents === 'write').map(([name]) => name).sort(), ['publish', 'rollback']);
+  assert.deepEqual(jobs.filter(([, job]) => job.environment === 'stable-push').map(([name]) => name).sort(), ['publish', 'rollback']);
+  // STABLE_DEPLOY_KEY is the only secret, and only the two steps that move stable see it.
+  const keyed = jobs.flatMap(([name, job]) => (job.steps as any[]).filter((s) => JSON.stringify(s).includes('secrets.')).map((s) => `${name}/${s.name}`));
+  assert.deepEqual(keyed.sort(), ['publish/Move stable', 'rollback/Move stable back']);
   const text = readFileSync(join(root, '.github/workflows/release.yml'), 'utf8');
-  assert.deepEqual([...text.matchAll(/secrets\.([A-Za-z_]+)/g)].map((m) => m[1]), [], 'no secret but the job token');
+  assert.deepEqual([...new Set([...text.matchAll(/secrets\.([A-Za-z_]+)/g)].map((m) => m[1]))], ['STABLE_DEPLOY_KEY']);
+  // The pushes trust github.com's pinned host key only, and GITHUB_TOKEN never pushes stable.
+  assert.match(workflow.env.GITHUB_HOST_KEY, /^ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl$/);
+  for (const [job, step] of [['publish', 'Move stable'], ['rollback', 'Move stable back']] as const) {
+    const run = steps(job)[at(job, (s) => s.name === step)]!.run!;
+    assert.match(run, /StrictHostKeyChecking=yes/, step);
+    assert.doesNotMatch(run, /git push (--force )?origin [^\n]*refs\/heads\/stable/, `${step} never pushes stable with GITHUB_TOKEN`);
+  }
   assert.equal(workflow.jobs.plan.steps[0].with['persist-credentials'], false);
 });
 
