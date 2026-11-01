@@ -73,6 +73,37 @@ export function ownerChanges(previous, next) {
   return changes;
 }
 
+/**
+ * PUB-4, PUB-9: the tags whose GitHub release is published and not a pre-release, as `gh release list --json
+ * tagName,isDraft,isPrerelease` lists them. A draft, a pre-release, or a release quarantined by a rollback or a failed
+ * verify (marked a pre-release) is none of them, and neither is a tag with no release.
+ */
+export function publishedTags(releases) {
+  return releases.filter(r => !r.isDraft && !r.isPrerelease && versionOfTag(r.tagName) && !isPrerelease(versionOfTag(r.tagName))).map(r => r.tagName);
+}
+/** PUB-4: the newest published release's tag, the baseline a release owner's approval is measured from. */
+export const newestPublished = releases => publishedTags(releases).sort((a, b) => compareVersions(versionOfTag(a), versionOfTag(b))).at(-1);
+
+/**
+ * PUB-6, PUB-8: what to do with this version's GitHub release. `existing` is `gh release view`'s isDraft, isPrerelease and
+ * asset names, or null when there's none; `wanted` the asset names the build made. A draft a stopped run left gets every
+ * asset again and is published; a published release gets only what it's missing; one quarantined (a pre-release for a
+ * version that isn't one) is never resumed.
+ */
+export function releaseAction({ version, existing, wanted }) {
+  if (!existing) return { action: 'create', upload: wanted };
+  if (existing.isPrerelease && !isPrerelease(version)) return { action: 'refuse', why: `v${version}'s release was quarantined (marked a pre-release by a rollback or a failed verify); it never goes out again: ship the fix as a higher version` };
+  if (existing.isDraft) return { action: 'complete', upload: wanted, clobber: true };
+  return { action: 'keep', upload: wanted.filter(name => !existing.assets.includes(name)) };
+}
+/** PUB-7: the channel moves only to a release that's published, and not quarantined. */
+export function releaseNotReady(version, release) {
+  if (!release) return `v${version} has no GitHub release`;
+  if (release.isDraft) return `v${version}'s release is still a draft`;
+  if (release.isPrerelease && !isPrerelease(version)) return `v${version}'s release is quarantined (a pre-release)`;
+  return undefined;
+}
+
 /** PUB-5, PUB-7: SHA256SUMS as `sum  name` lines. */
 export function parseSums(text) {
   return Object.fromEntries(text.split('\n').filter(Boolean).map(line => {
@@ -105,15 +136,18 @@ export function channelProblem(readBack, want) {
 }
 
 /**
- * PUB-9: where a rollback may move the channel. `released` lists the tags with a GitHub release, `channelVersion` is the
- * version the channel is at now. Only an older, released, non-pre-release tag.
+ * PUB-9: where a rollback may move the channel. `releases` is `gh release list`'s tagName, isDraft and isPrerelease;
+ * `channelVersion` is the version the channel is at now. Only an older tag whose release is published, and not a draft,
+ * a pre-release or quarantined.
  */
-export function rollbackTarget({ to, tags, released, channelVersion }) {
+export function rollbackTarget({ to, tags, releases, channelVersion }) {
   const version = versionOfTag(to);
   if (!version) return { why: `${to} isn't a version tag (v<version>)` };
   if (!tags[to]) return { why: `${to} isn't a tag here` };
-  if (!released.includes(to)) return { why: `${to} has no GitHub release` };
   if (isPrerelease(version)) return { why: `${to} is a pre-release, which ${CHANNEL} never carries` };
+  const release = releases.find(r => r.tagName === to);
+  if (!release) return { why: `${to} has no GitHub release` };
+  if (!publishedTags([release]).length) return { why: `${to}'s release is ${release.isDraft ? 'a draft' : 'quarantined (a pre-release)'}` };
   if (compareVersions(version, channelVersion) >= 0) return { why: `${to} isn't older than ${CHANNEL}'s ${channelVersion}` };
   return { commit: tags[to] };
 }
@@ -132,21 +166,21 @@ export function summary({ what, version, tag, commit, release, assets = {}, owne
 }
 
 // The workflow's calls. Each prints what it decided and writes its outputs to $GITHUB_OUTPUT.
-const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim();
+const git = (root, ...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 function output(values) {
   for (const [key, value] of Object.entries(values)) {
     console.log(`${key}=${value}`);
     if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `${key}=${value}\n`);
   }
 }
-function tagsHere() {
-  const lines = git('for-each-ref', '--format=%(refname:short) %(*objectname) %(objectname)', 'refs/tags');
+function tagsHere(root) {
+  const lines = git(root, 'for-each-ref', '--format=%(refname:short) %(*objectname) %(objectname)', 'refs/tags');
   return Object.fromEntries(lines.split('\n').filter(Boolean).map(l => { const [name, peeled, object] = l.split(' '); return [name, peeled || object]; }));
 }
-function selectionAt(ref) {
+function selectionAt(root, ref) {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), 'agent-cloud-release-')));
   try {
-    execFileSync('sh', ['-c', 'git archive "$1" | tar -x -C "$2"', 'archive', ref, dir]);
+    execFileSync('sh', ['-c', 'git -C "$1" archive "$2" | tar -x -C "$3"', 'archive', root, ref, dir]);
     return releaseSelection(dir);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 }
@@ -158,12 +192,12 @@ export function main(argv, root = process.cwd()) {
   const read = path => JSON.parse(readFileSync(join(root, path), 'utf8'));
   if (command === 'plan') {
     const version = read('package.json').version;
-    const head = git('rev-parse', 'HEAD');
+    const head = git(root, 'rev-parse', 'HEAD');
     const dispatched = flag('version') !== undefined;
     if (dispatched && flag('version') !== version) throw Error(`This commit's version is ${version}, not ${flag('version')}.`);
     let parentVersion;
-    try { parentVersion = JSON.parse(git('show', 'HEAD^1:package.json')).version; } catch { parentVersion = undefined; }
-    const tags = tagsHere();
+    try { parentVersion = JSON.parse(git(root, 'show', 'HEAD^1:package.json')).version; } catch { parentVersion = undefined; }
+    const tags = tagsHere(root);
     const plan = planVersion({ version, parentVersion, head, tags, dispatched });
     const mismatched = plan.action === 'skip' ? [] : versionMismatches({
       'package.json': version, 'package-lock.json': read('package-lock.json').version, 'release.json': read('release.json').version,
@@ -173,9 +207,10 @@ export function main(argv, root = process.cwd()) {
     });
     if (plan.action === 'fail' || mismatched.length) throw Error([plan.action === 'fail' ? plan.why : '', ...mismatched].filter(Boolean).join('; '));
     const go = plan.action !== 'skip';
-    const previous = Object.keys(tags).filter(t => t !== `v${version}`).map(versionOfTag).filter(v => v && !isPrerelease(v)).sort(compareVersions).at(-1);
+    // PUB-4: measured from the newest published release, never a tag alone, a draft or a quarantined release.
+    const previous = newestPublished(JSON.parse(flag('releases') ?? '[]').filter(r => r.tagName !== `v${version}`));
     let before = null;
-    if (go && previous) try { before = selectionAt(`v${previous}`); } catch (e) { before = { unreadable: `v${previous}'s license and listing can't be read (${e instanceof Error ? e.message : e})` }; }
+    if (go && previous) try { before = selectionAt(root, previous); } catch (e) { before = { unreadable: `${previous}'s license and listing can't be read (${e instanceof Error ? e.message : e})` }; }
     const changes = !go ? [] : before?.unreadable ? [before.unreadable] : ownerChanges(before, releaseSelection(root));
     console.log(plan.why);
     output({ publish: go, resume: plan.action === 'resume', version, prerelease: isPrerelease(version), needs_owner: changes.length > 0, changes: changes.join('; ') || 'none' });
@@ -188,6 +223,19 @@ export function main(argv, root = process.cwd()) {
     console.log('The release\'s assets match SHA256SUMS and the build.');
     return;
   }
+  if (command === 'release-action') {
+    const existing = flag('existing') ? JSON.parse(flag('existing')) : null;
+    const decided = releaseAction({ version: flag('version'), existing, wanted: (flag('wanted') ?? '').split(',').filter(Boolean) });
+    if (decided.action === 'refuse') throw Error(decided.why);
+    output({ action: decided.action, upload: decided.upload.join(' '), clobber: Boolean(decided.clobber) });
+    return;
+  }
+  if (command === 'ready') {
+    const problem = releaseNotReady(flag('version'), flag('release') ? JSON.parse(flag('release')) : null);
+    if (problem) throw Error(`${CHANNEL} doesn't move: ${problem}.`);
+    console.log(`v${flag('version')}'s release is published.`);
+    return;
+  }
   if (command === 'channel') {
     const problem = channelProblem(flag('read'), flag('want'));
     if (problem) throw Error(problem);
@@ -195,7 +243,7 @@ export function main(argv, root = process.cwd()) {
     return;
   }
   if (command === 'rollback') {
-    const target = rollbackTarget({ to: flag('to'), tags: tagsHere(), released: (flag('released') ?? '').split(',').filter(Boolean), channelVersion: flag('channel-version') });
+    const target = rollbackTarget({ to: flag('to'), tags: tagsHere(root), releases: JSON.parse(flag('releases') ?? '[]'), channelVersion: flag('channel-version') });
     if (!target.commit) throw Error(`Rollback refused: ${target.why}.`);
     output({ commit: target.commit });
     return;
@@ -206,7 +254,7 @@ export function main(argv, root = process.cwd()) {
     if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, text);
     return;
   }
-  throw Error('Use release.mjs plan [--version <v>] | verify --assets <dir> --built <dist/production> | channel --read <sha> --want <sha> | rollback --to v<version> --released <tags> --channel-version <v> | summary --json <fields>.');
+  throw Error('Use release.mjs plan --releases <json> [--version <v>] | release-action --version <v> --existing <json> --wanted <names> | ready --version <v> --release <json> | verify --assets <dir> --built <dist/production> | channel --read <sha> --want <sha> | rollback --to v<version> --releases <json> --channel-version <v> | summary --json <fields>.');
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

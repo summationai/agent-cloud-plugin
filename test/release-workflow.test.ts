@@ -5,7 +5,8 @@ import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSyn
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parse } from 'yaml';
-import { assetProblems, channelProblem, compareVersions, isPrerelease, main, ownerChanges, planVersion, releaseSelection, rollbackTarget, summary, versionMismatches } from '../scripts/release.mjs';
+import { execFileSync } from 'node:child_process';
+import { assetProblems, channelProblem, compareVersions, isPrerelease, main, newestPublished, ownerChanges, planVersion, releaseAction, releaseNotReady, releaseSelection, rollbackTarget, summary, versionMismatches } from '../scripts/release.mjs';
 
 const root = join(import.meta.dirname, '..');
 const workflow = parse(readFileSync(join(root, '.github/workflows/release.yml'), 'utf8'));
@@ -74,10 +75,53 @@ test('PUB-4: a changed license or listing asks the release owner, by the bytes a
   assert.deepEqual(ownerChanges(base, releaseSelection(dir)), ['listing: plugin']);
   dir = copy(); config(dir, (c) => { c.marketplace.category = 'Productivity'; });
   assert.deepEqual(ownerChanges(base, releaseSelection(dir)), ['listing: marketplace']);
+  // The baseline is the newest PUBLISHED release: never a tag alone, a draft or a quarantined release (codex on #18).
+  const r = (tagName: string, isDraft = false, isPrerelease = false) => ({ tagName, isDraft, isPrerelease });
+  assert.equal(newestPublished([r('v1.0.0'), r('v1.1.0', true), r('v1.2.0', false, true), r('v1.3.0-rc.1')]), 'v1.0.0');
+  assert.equal(newestPublished([]), undefined);
   // The owner's job holds on the release environment, and publish waits for it only when it ran.
   assert.equal(workflow.jobs.owner.environment, 'release');
   assert.match(workflow.jobs.owner.if, /needs_owner == 'true'/);
   assert.match(workflow.jobs.publish.if, /needs\.owner\.result == 'success' \|\| needs\.owner\.result == 'skipped'/);
+});
+
+test('PUB-4: the plan measures from the newest published release in a real repository, not an unpublished tag after it', (t) => {
+  const dir = temporary(t);
+  const git = (...args: string[]) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { cwd: dir, encoding: 'utf8' });
+  mkdirSync(join(dir, 'release-assets')); mkdirSync(join(dir, 'plugins/agent-cloud/.claude-plugin'), { recursive: true });
+  copyFileSync(join(root, 'release.config.json'), join(dir, 'release.config.json'));
+  copyFileSync(join(root, 'release-assets/icon.png'), join(dir, 'release-assets/icon.png'));
+  const at = (version: string, license: string) => {
+    for (const f of ['package.json', 'package-lock.json', 'release.json', 'plugins/agent-cloud/plugin.json', 'plugins/agent-cloud/.claude-plugin/plugin.json', 'plugins/agent-cloud/bundle.json']) writeFileSync(join(dir, f), JSON.stringify({ version }));
+    writeFileSync(join(dir, 'release-assets/LICENSE'), license);
+    git('add', '-A'); git('commit', '-qm', version); git('tag', `v${version}`);
+  };
+  git('init', '-q');
+  at('1.0.0', 'License A\n'); at('1.1.0', 'License B\n'); at('1.2.0', 'License B\n'); git('tag', '-d', 'v1.2.0');
+  const plan = (releases: object[]) => {
+    const out = join(dir, '..', `out-${Math.random()}`); writeFileSync(out, '');
+    process.env.GITHUB_OUTPUT = out;
+    try { main(['plan', '--releases', JSON.stringify(releases)], dir); } finally { delete process.env.GITHUB_OUTPUT; }
+    return Object.fromEntries(readFileSync(out, 'utf8').trim().split('\n').map((l) => l.split('=') as [string, string]));
+  };
+  const published = { tagName: 'v1.0.0', isDraft: false, isPrerelease: false };
+  const got = plan([published, { tagName: 'v1.1.0', isDraft: true, isPrerelease: false }]);
+  assert.deepEqual([got.publish, got.version, got.needs_owner, got.changes], ['true', '1.2.0', 'true', 'license text'], 'v1.1.0 is only a draft: measured from v1.0.0');
+  assert.equal(plan([published, { tagName: 'v1.1.0', isDraft: false, isPrerelease: false }]).needs_owner, 'false', 'published v1.1.0 has the same license');
+});
+
+test('PUB-6, PUB-8: an existing release is completed if it\'s a draft, topped up if published, and never resumed once quarantined', () => {
+  const wanted = ['a-claude.zip', 'a-openai.zip', 'SHA256SUMS'];
+  assert.deepEqual(releaseAction({ version: '1.2.0', existing: null, wanted }), { action: 'create', upload: wanted });
+  assert.deepEqual(releaseAction({ version: '1.2.0', existing: { isDraft: true, isPrerelease: false, assets: ['a-claude.zip'] }, wanted }), { action: 'complete', upload: wanted, clobber: true }, 'a stopped run\'s draft: every asset again, then published');
+  assert.deepEqual(releaseAction({ version: '1.2.0', existing: { isDraft: false, isPrerelease: false, assets: ['a-claude.zip'] }, wanted }), { action: 'keep', upload: ['a-openai.zip', 'SHA256SUMS'] }, 'published: only what it lacks, never replacing one');
+  assert.deepEqual(releaseAction({ version: '1.2.0', existing: { isDraft: false, isPrerelease: false, assets: wanted }, wanted }), { action: 'keep', upload: [] });
+  assert.match(releaseAction({ version: '1.2.0', existing: { isDraft: false, isPrerelease: true, assets: wanted }, wanted }).why!, /quarantined.*higher version/, 'rolled back or failed verify: refused');
+  assert.equal(releaseAction({ version: '1.3.0-rc.1', existing: { isDraft: false, isPrerelease: true, assets: wanted }, wanted }).action, 'keep', 'a pre-release version is a pre-release by design');
+  const run = steps('publish')[at('publish', (s) => s.name === 'Release')]!.run!;
+  assert.match(run, /release\.mjs release-action/);
+  assert.match(run, /complete\)[\s\S]*--clobber[\s\S]*--draft=false/);
+  assert.doesNotMatch(run.split('keep)')[1]!, /--clobber/, 'a published release\'s assets are never replaced');
 });
 
 test('PUB-5, PUB-7: a ZIP that differs from SHA256SUMS, the build or the release keeps stable where it was', (t) => {
@@ -103,7 +147,14 @@ test('PUB-5, PUB-7: a ZIP that differs from SHA256SUMS, the build or the release
   // Order: verified, then stable, then read back; checksums before the tag.
   assert.ok(at('publish', (s) => s.name === 'Checksums') < at('publish', (s) => s.name === 'Tag'));
   assert.ok(at('publish', (s) => s.name === "Verify the release's assets") < at('publish', (s) => s.name === 'Move stable'));
-  assert.match(steps('publish')[at('publish', (s) => s.name === 'Move stable')]!.run!, /release\.mjs channel --read/);
+  const move = steps('publish')[at('publish', (s) => s.name === 'Move stable')]!.run!;
+  assert.match(move, /release\.mjs channel --read/);
+  // The channel moves only to a published release, checked right before the push (codex on #18).
+  assert.ok(move.indexOf('release.mjs ready') >= 0 && move.indexOf('release.mjs ready') < move.indexOf('git push'));
+  assert.equal(releaseNotReady('1.2.0', { isDraft: false, isPrerelease: false }), undefined);
+  assert.match(releaseNotReady('1.2.0', { isDraft: true, isPrerelease: false })!, /draft/);
+  assert.match(releaseNotReady('1.2.0', { isDraft: false, isPrerelease: true })!, /quarantined/);
+  assert.match(releaseNotReady('1.2.0', null)!, /no GitHub release/);
 });
 
 test('PUB-6: a pre-release is published as one and never moves stable', () => {
@@ -115,20 +166,26 @@ test('PUB-6: a pre-release is published as one and never moves stable', () => {
 
 test('PUB-8: a re-run keeps a tag at this commit and a release that exists, and runs are never cancelled', () => {
   assert.match(steps('publish')[at('publish', (s) => s.name === 'Tag')]!.run!, /test "\$\(git rev-parse "\$TAG\^\{commit\}"\)" = "\$GITHUB_SHA"/);
-  assert.match(steps('publish')[at('publish', (s) => s.name === 'Release')]!.run!, /gh release view "\$TAG" .*exit 0/);
-  assert.deepEqual(workflow.concurrency, { group: 'release', 'cancel-in-progress': false });
+  assert.match(steps('publish')[at('publish', (s) => s.name === 'Release')]!.run!, /gh release view "\$TAG" --json isDraft,isPrerelease,assets/);
+  // Every pending run is kept: a docs push behind a waiting version bump never replaces it (codex on #18).
+  assert.deepEqual(workflow.concurrency, { group: 'release', 'cancel-in-progress': false, queue: 'max' });
   assert.ok(workflow.on.workflow_dispatch.inputs.version, 'a stopped run is resumed by hand');
 });
 
 test('PUB-9: a rollback moves stable only to an older, released, non-pre-release tag', () => {
-  const tags = { 'v0.1.1': 'a', 'v0.2.0': 'b', 'v0.2.1-rc.1': 'c', 'v0.2.1': 'd', 'v0.1.2': 'e' };
-  const released = ['v0.1.1', 'v0.2.0', 'v0.2.1-rc.1', 'v0.2.1'];
-  assert.deepEqual(rollbackTarget({ to: 'v0.2.0', tags, released, channelVersion: '0.2.1' }), { commit: 'b' });
-  assert.match(rollbackTarget({ to: 'v0.2.1', tags, released, channelVersion: '0.2.1' }).why!, /isn't older/);
-  assert.match(rollbackTarget({ to: 'v0.2.1-rc.1', tags, released, channelVersion: '0.2.1' }).why!, /pre-release/);
-  assert.match(rollbackTarget({ to: 'v0.1.2', tags, released, channelVersion: '0.2.1' }).why!, /no GitHub release/);
-  assert.match(rollbackTarget({ to: 'v9.9.9', tags, released, channelVersion: '0.2.1' }).why!, /isn't a tag here/);
-  assert.match(rollbackTarget({ to: 'stable', tags, released, channelVersion: '0.2.1' }).why!, /isn't a version tag/);
+  const tags = { 'v0.1.1': 'a', 'v0.2.0': 'b', 'v0.2.1-rc.1': 'c', 'v0.2.1': 'd', 'v0.1.2': 'e', 'v0.1.3': 'f', 'v0.1.4': 'g' };
+  const r = (tagName: string, isDraft = false, isPrerelease = false) => ({ tagName, isDraft, isPrerelease });
+  const releases = [r('v0.1.1'), r('v0.2.0'), r('v0.2.1-rc.1', false, true), r('v0.2.1'), r('v0.1.3', true), r('v0.1.4', false, true)];
+  const back = (to: string) => rollbackTarget({ to, tags, releases, channelVersion: '0.2.1' });
+  assert.deepEqual(back('v0.2.0'), { commit: 'b' });
+  assert.match(back('v0.2.1').why!, /isn't older/);
+  assert.match(back('v0.2.1-rc.1').why!, /pre-release/);
+  assert.match(back('v0.1.2').why!, /no GitHub release/);
+  assert.match(back('v0.1.3').why!, /a draft/, 'a draft release is never a target (codex on #18)');
+  assert.match(back('v0.1.4').why!, /quarantined/, 'nor one a rollback or a failed verify quarantined');
+  assert.match(back('v9.9.9').why!, /isn't a tag here/);
+  assert.match(back('stable').why!, /isn't a version tag/);
+  assert.match(workflow.jobs.rollback.steps.at(-1).run, /gh release list --limit 200 --json tagName,isDraft,isPrerelease/);
   assert.equal(workflow.jobs['rollback-approve'].environment, 'release', 'a release owner approves first');
   assert.equal(workflow.jobs.rollback.needs, 'rollback-approve');
   assert.match(workflow.jobs.rollback.steps.at(-1).run, /git push --force[\s\S]*release\.mjs channel --read[\s\S]*--prerelease/);

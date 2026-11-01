@@ -14,9 +14,12 @@ on:
         required: false
 permissions:
   contents: read
+# PUB-8: one run at a time, and every pending one kept in order (the default keeps one, so a later push would replace a
+# version bump that's waiting).
 concurrency:
   group: release
   cancel-in-progress: false
+  queue: max
 env:
   # github.com's ed25519 host key, as GitHub's /meta API publishes it: the deploy-key pushes trust it and nothing else.
   GITHUB_HOST_KEY: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
@@ -42,8 +45,9 @@ jobs:
           cache: npm
       - run: npm ci
       - id: plan
-        run: node scripts/release.mjs plan ${INPUT_VERSION:+--version "$INPUT_VERSION"}
+        run: node scripts/release.mjs plan --releases "$(gh release list --limit 200 --json tagName,isDraft,isPrerelease)" ${INPUT_VERSION:+--version "$INPUT_VERSION"}
         env:
+          GH_TOKEN: ${{ github.token }}
           INPUT_VERSION: ${{ inputs.version }}
 
   # PUB-4: only a changed license or listing waits here, for a release owner on the `release` environment.
@@ -100,11 +104,23 @@ jobs:
           fi
       - name: Release
         run: |
-          if gh release view "$TAG" >/dev/null 2>&1; then exit 0; fi
-          pr=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" --jq '.[0] | "#\(.number): \(.title)"' || true)
-          gh release create "$TAG" --verify-tag --title "agent.cloud $VERSION" --notes "${pr:-$GITHUB_SHA}" \
-            ${{ needs.plan.outputs.prerelease == 'true' && '--prerelease' || '' }} \
-            dist/production/submissions/*.zip dist/production/SHA256SUMS
+          path_of() { if [ "$1" = SHA256SUMS ]; then echo dist/production/SHA256SUMS; else echo "dist/production/submissions/$1"; fi; }
+          wanted="$(cd dist/production/submissions && ls *.zip | paste -sd, -),SHA256SUMS"
+          existing=$(gh release view "$TAG" --json isDraft,isPrerelease,assets --jq '{isDraft, isPrerelease, assets: [.assets[].name]}' 2>/dev/null || true)
+          node scripts/release.mjs release-action --version "$VERSION" --existing "$existing" --wanted "$wanted" > "$RUNNER_TEMP/action"
+          action=$(sed -n 's/^action=//p' "$RUNNER_TEMP/action")
+          files=(); for name in $(sed -n 's/^upload=//p' "$RUNNER_TEMP/action"); do files+=("$(path_of "$name")"); done
+          case "$action" in
+            create)
+              pr=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" --jq '.[0] | "#\(.number): \(.title)"' || true)
+              gh release create "$TAG" --verify-tag --title "agent.cloud $VERSION" --notes "${pr:-$GITHUB_SHA}" \
+                ${{ needs.plan.outputs.prerelease == 'true' && '--prerelease' || '' }} "${files[@]}" ;;
+            complete)
+              gh release upload "$TAG" "${files[@]}" --clobber
+              gh release edit "$TAG" --draft=false ${{ needs.plan.outputs.prerelease == 'true' && '--prerelease' || '' }} ;;
+            keep)
+              if [ ${#files[@]} -gt 0 ]; then gh release upload "$TAG" "${files[@]}"; fi ;;
+          esac
       # PUB-7: the published assets, downloaded, against SHA256SUMS and the build.
       - name: Verify the release's assets
         run: |
@@ -121,6 +137,7 @@ jobs:
         env:
           STABLE_DEPLOY_KEY: ${{ secrets.STABLE_DEPLOY_KEY }}
         run: |
+          node scripts/release.mjs ready --version "$VERSION" --release "$(gh release view "$TAG" --json isDraft,isPrerelease)"
           from=$(git ls-remote origin refs/heads/stable | cut -f1)
           echo "from=$from" >> "$GITHUB_OUTPUT"
           if [ "$from" != "$GITHUB_SHA" ]; then
@@ -179,8 +196,8 @@ jobs:
         run: |
           from=$(git ls-remote origin refs/heads/stable | cut -f1)
           bad=$(git show "$from:package.json" | node -p 'JSON.parse(require("fs").readFileSync(0)).version')
-          released=$(gh release list --limit 200 --json tagName --jq '[.[].tagName] | join(",")')
-          node scripts/release.mjs rollback --to "$TO" --released "$released" --channel-version "$bad" > "$RUNNER_TEMP/target"
+          releases=$(gh release list --limit 200 --json tagName,isDraft,isPrerelease)
+          node scripts/release.mjs rollback --to "$TO" --releases "$releases" --channel-version "$bad" > "$RUNNER_TEMP/target"
           commit=$(sed -n 's/^commit=//p' "$RUNNER_TEMP/target")
           ssh_dir="$RUNNER_TEMP/stable-ssh"; mkdir -m 700 "$ssh_dir"
           printf '%s\n' "$STABLE_DEPLOY_KEY" > "$ssh_dir/key"; chmod 600 "$ssh_dir/key"
