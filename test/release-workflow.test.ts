@@ -1,0 +1,149 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { parse } from 'yaml';
+import { assetProblems, channelProblem, compareVersions, isPrerelease, main, ownerChanges, planVersion, releaseSelection, rollbackTarget, summary, versionMismatches } from '../scripts/release.mjs';
+
+const root = join(import.meta.dirname, '..');
+const workflow = parse(readFileSync(join(root, '.github/workflows/release.yml'), 'utf8'));
+const hash = (text: string) => createHash('sha256').update(text).digest('hex');
+function temporary(t: test.TestContext) {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'agent-cloud-release-workflow-')));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  return dir;
+}
+const steps = (job: string) => workflow.jobs[job].steps as { name?: string; run?: string; if?: string }[];
+const at = (job: string, match: (s: { name?: string; run?: string }) => boolean) => steps(job).findIndex(match);
+
+test('PUB-1: a push publishes only when the version changed; a manual run goes on for the same version', () => {
+  const tags = { 'v0.2.0': 'c0' };
+  assert.equal(planVersion({ version: '0.2.1', parentVersion: '0.2.0', head: 'c1', tags }).action, 'publish');
+  assert.equal(planVersion({ version: '0.2.1', parentVersion: '0.2.1', head: 'c1', tags }).action, 'skip');
+  assert.equal(planVersion({ version: '0.2.1', parentVersion: '0.2.1', head: 'c1', tags, dispatched: true }).action, 'publish');
+  assert.deepEqual(workflow.on.push.branches, ['main']);
+  assert.ok(workflow.on.workflow_dispatch.inputs.version);
+});
+
+test('PUB-2: one version in every file, higher than every other tag; its own tag at this commit resumes, at another fails', () => {
+  assert.deepEqual(versionMismatches({ 'package.json': '0.2.1', 'release.json': '0.2.1', 'plugins/agent-cloud/bundle.json': '0.2.0' }), ['plugins/agent-cloud/bundle.json has 0.2.0, package.json has 0.2.1']);
+  assert.deepEqual(versionMismatches({ 'package.json': '0.2.1', 'release.json': '0.2.1' }), []);
+  const tags = { 'v0.1.0-alpha.3': 'a', 'v0.2.0': 'b' };
+  assert.match(planVersion({ version: '0.2.0', parentVersion: '0.1.1', head: 'x', tags: { 'v0.2.0': 'b', 'v0.2.1': 'c' } }).why, /tag never moves|isn't higher/);
+  assert.match(planVersion({ version: '0.1.9', parentVersion: '0.1.8', head: 'x', tags }).why, /isn't higher than v0\.2\.0/);
+  assert.equal(planVersion({ version: '0.2.1', parentVersion: '0.2.0', head: 'x', tags: { ...tags, 'v0.2.1': 'x' } }).action, 'resume');
+  assert.equal(planVersion({ version: '0.2.1', parentVersion: '0.2.0', head: 'x', tags: { ...tags, 'v0.2.1': 'y' } }).action, 'fail');
+  assert.throws(() => planVersion({ version: 'banana', parentVersion: '0.2.0', head: 'x', tags }), /isn't a version/);
+  // Pre-release ordering, as semver orders it.
+  const ordered = ['0.1.0-alpha.2', '0.1.0-alpha.3', '0.1.0-alpha.10', '0.1.0-beta', '0.1.0', '0.1.1', '0.2.0'];
+  assert.deepEqual([...ordered].reverse().sort(compareVersions), ordered);
+});
+
+test('PUB-3: the release owner\'s checks and the --release gate all run before anything is tagged', () => {
+  const tag = at('publish', (s) => s.name === 'Tag');
+  for (const run of ['npm ci', 'npm test', 'npm run typecheck', 'npm run check:generated', 'npm run build -- --release']) {
+    const i = at('publish', (s) => s.run === run);
+    assert.ok(i >= 0 && i < tag, run);
+  }
+});
+
+test('PUB-4: a changed license or listing asks the release owner, by the bytes and values the loader selects; nothing else does', (t) => {
+  const copy = () => {
+    const dir = temporary(t);
+    mkdirSync(join(dir, 'release-assets'));
+    for (const f of ['release.config.json', 'release-assets/LICENSE', 'release-assets/icon.png']) copyFileSync(join(root, f), join(dir, f));
+    return dir;
+  };
+  const config = (dir: string, edit: (c: any) => void) => { const c = JSON.parse(readFileSync(join(dir, 'release.config.json'), 'utf8')); edit(c); writeFileSync(join(dir, 'release.config.json'), JSON.stringify(c)); };
+  const base = releaseSelection(copy());
+  assert.deepEqual(ownerChanges(base, releaseSelection(copy())), [], 'the same release: nobody asked');
+  assert.deepEqual(ownerChanges(null, base), ['there is no released tag yet']);
+  let dir = copy(); config(dir, (c) => { c.license.id = 'MIT'; });
+  assert.deepEqual(ownerChanges(base, releaseSelection(dir)), ['license identifier Apache-2.0 → MIT']);
+  dir = copy(); writeFileSync(join(dir, 'release-assets/LICENSE'), 'Other terms.\n');
+  assert.deepEqual(ownerChanges(base, releaseSelection(dir)), ['license text']);
+  dir = copy(); writeFileSync(join(dir, 'OTHER-LICENSE'), 'Other terms.\n'); config(dir, (c) => { c.license.file = 'OTHER-LICENSE'; });
+  assert.deepEqual(ownerChanges(base, releaseSelection(dir)), ['license text'], 'license.file naming other bytes');
+  dir = copy(); copyFileSync(join(dir, 'release-assets/LICENSE'), join(dir, 'MOVED-LICENSE')); config(dir, (c) => { c.license.file = 'MOVED-LICENSE'; });
+  assert.deepEqual(ownerChanges(base, releaseSelection(dir)), [], 'a moved license with the same bytes');
+  dir = copy(); copyFileSync(join(dir, 'release-assets/icon.png'), join(dir, 'moved.png')); config(dir, (c) => { c.plugin.icon = 'moved.png'; });
+  assert.deepEqual(ownerChanges(base, releaseSelection(dir)), [], 'a moved icon with the same bytes');
+  dir = copy(); config(dir, (c) => { c.plugin.shortDescription = 'Host what agents build'; });
+  assert.deepEqual(ownerChanges(base, releaseSelection(dir)), ['listing: plugin']);
+  dir = copy(); config(dir, (c) => { c.marketplace.category = 'Productivity'; });
+  assert.deepEqual(ownerChanges(base, releaseSelection(dir)), ['listing: marketplace']);
+  // The owner's job holds on the release environment, and publish waits for it only when it ran.
+  assert.equal(workflow.jobs.owner.environment, 'release');
+  assert.match(workflow.jobs.owner.if, /needs_owner == 'true'/);
+  assert.match(workflow.jobs.publish.if, /needs\.owner\.result == 'success' \|\| needs\.owner\.result == 'skipped'/);
+});
+
+test('PUB-5, PUB-7: a ZIP that differs from SHA256SUMS, the build or the release keeps stable where it was', (t) => {
+  const built = { 'submissions/a-claude.zip': hash('claude'), 'submissions/a-openai.zip': hash('openai') };
+  const sums = `${hash('report')}  release-report.json\n${hash('claude')}  submissions/a-claude.zip\n${hash('openai')}  submissions/a-openai.zip\n${hash('x')}  repository/README.md\n`;
+  const assets = { 'a-claude.zip': hash('claude'), 'a-openai.zip': hash('openai'), SHA256SUMS: hash(sums) };
+  assert.deepEqual(assetProblems({ sums, assets, built }), []);
+  assert.match(assetProblems({ sums, assets, built: { ...built, 'submissions/a-claude.zip': hash('edited') } }).join(), /SHA256SUMS says .*, the build made/, 'a ZIP edited after SHA256SUMS');
+  assert.match(assetProblems({ sums, assets: { ...assets, 'a-openai.zip': hash('tampered') }, built }).join(), /the release has .*, the build made/);
+  const { 'a-claude.zip': _gone, ...missing } = assets;
+  assert.match(assetProblems({ sums, assets: missing, built }).join(), /a-claude\.zip is missing from the release/);
+  assert.match(assetProblems({ sums, assets: { ...assets, 'extra.zip': hash('extra') }, built }).join(), /extra\.zip, which the build didn't make/);
+  assert.equal(channelProblem('c1', 'c1'), undefined);
+  assert.match(channelProblem('c0', 'c1')!, /stable reads c0 from GitHub, not c1/);
+  // The CLI, as the workflow runs it, on real files.
+  const dir = temporary(t);
+  mkdirSync(join(dir, 'built/submissions'), { recursive: true }); mkdirSync(join(dir, 'assets'));
+  for (const [name, text] of [['a-claude.zip', 'claude'], ['a-openai.zip', 'openai']]) { writeFileSync(join(dir, 'built/submissions', name!), text!); writeFileSync(join(dir, 'assets', name!), text!); }
+  writeFileSync(join(dir, 'assets/SHA256SUMS'), sums);
+  main(['verify', '--assets', join(dir, 'assets'), '--built', join(dir, 'built')]);
+  writeFileSync(join(dir, 'assets/a-openai.zip'), 'tampered');
+  assert.throws(() => main(['verify', '--assets', join(dir, 'assets'), '--built', join(dir, 'built')]), /don't verify/);
+  // Order: verified, then stable, then read back; checksums before the tag.
+  assert.ok(at('publish', (s) => s.name === 'Checksums') < at('publish', (s) => s.name === 'Tag'));
+  assert.ok(at('publish', (s) => s.name === "Verify the release's assets") < at('publish', (s) => s.name === 'Move stable'));
+  assert.match(steps('publish')[at('publish', (s) => s.name === 'Move stable')]!.run!, /release\.mjs channel --read/);
+});
+
+test('PUB-6: a pre-release is published as one and never moves stable', () => {
+  assert.equal(isPrerelease('0.3.0-rc.1'), true);
+  assert.equal(isPrerelease('0.3.0'), false);
+  assert.match(steps('publish')[at('publish', (s) => s.name === 'Release')]!.run!, /--prerelease/);
+  assert.equal(steps('publish')[at('publish', (s) => s.name === 'Move stable')]!.if, "${{ needs.plan.outputs.prerelease != 'true' }}");
+});
+
+test('PUB-8: a re-run keeps a tag at this commit and a release that exists, and runs are never cancelled', () => {
+  assert.match(steps('publish')[at('publish', (s) => s.name === 'Tag')]!.run!, /test "\$\(git rev-parse "\$TAG\^\{commit\}"\)" = "\$GITHUB_SHA"/);
+  assert.match(steps('publish')[at('publish', (s) => s.name === 'Release')]!.run!, /gh release view "\$TAG" .*exit 0/);
+  assert.deepEqual(workflow.concurrency, { group: 'release', 'cancel-in-progress': false });
+  assert.ok(workflow.on.workflow_dispatch.inputs.version, 'a stopped run is resumed by hand');
+});
+
+test('PUB-9: a rollback moves stable only to an older, released, non-pre-release tag', () => {
+  const tags = { 'v0.1.1': 'a', 'v0.2.0': 'b', 'v0.2.1-rc.1': 'c', 'v0.2.1': 'd', 'v0.1.2': 'e' };
+  const released = ['v0.1.1', 'v0.2.0', 'v0.2.1-rc.1', 'v0.2.1'];
+  assert.deepEqual(rollbackTarget({ to: 'v0.2.0', tags, released, channelVersion: '0.2.1' }), { commit: 'b' });
+  assert.match(rollbackTarget({ to: 'v0.2.1', tags, released, channelVersion: '0.2.1' }).why!, /isn't older/);
+  assert.match(rollbackTarget({ to: 'v0.2.1-rc.1', tags, released, channelVersion: '0.2.1' }).why!, /pre-release/);
+  assert.match(rollbackTarget({ to: 'v0.1.2', tags, released, channelVersion: '0.2.1' }).why!, /no GitHub release/);
+  assert.match(rollbackTarget({ to: 'v9.9.9', tags, released, channelVersion: '0.2.1' }).why!, /isn't a tag here/);
+  assert.match(rollbackTarget({ to: 'stable', tags, released, channelVersion: '0.2.1' }).why!, /isn't a version tag/);
+  assert.equal(workflow.jobs.rollback.environment, 'release');
+  assert.match(workflow.jobs.rollback.steps.at(-1).run, /release\.mjs channel --read[\s\S]*--prerelease/);
+});
+
+test('PUB-10: only the publish and rollback jobs may write, through GITHUB_TOKEN', () => {
+  assert.deepEqual(workflow.permissions, { contents: 'read' });
+  const writers = Object.entries(workflow.jobs).filter(([, job]: [string, any]) => job.permissions?.contents === 'write').map(([name]) => name);
+  assert.deepEqual(writers.sort(), ['publish', 'rollback']);
+  const text = readFileSync(join(root, '.github/workflows/release.yml'), 'utf8');
+  assert.deepEqual([...text.matchAll(/secrets\.([A-Za-z_]+)/g)].map((m) => m[1]), [], 'no secret but the job token');
+  assert.equal(workflow.jobs.plan.steps[0].with['persist-credentials'], false);
+});
+
+test('PUB-11: the summary says what the run did', () => {
+  const text = summary({ what: 'Published', version: '0.2.1', tag: 'v0.2.1', commit: 'd1', release: 'https://github.com/o/r/releases/tag/v0.2.1', assets: { 'a.zip': 'f00' }, owner: null, channel: { from: 'c0', to: 'd1' } });
+  for (const part of ['agent.cloud 0.2.1', '`v0.2.1` at `d1`', 'releases/tag/v0.2.1', '`a.zip`: `f00`', 'not asked: no license or listing change', 'stable: `c0` → `d1`']) assert.ok(text.includes(part), part);
+  assert.ok(summary({ what: 'Published', version: '0.3.0-rc.1', tag: 'v0.3.0-rc.1', commit: 'e', channel: null }).includes('stable: not moved'));
+});

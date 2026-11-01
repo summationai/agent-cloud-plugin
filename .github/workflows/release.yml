@@ -1,0 +1,160 @@
+# PUB-1 to PUB-11 (PUBLISHING.md): a merge to main that bumps the version publishes it; a release owner can roll the
+# channel back. Every decision is scripts/release.mjs's, tested in test/release-workflow.test.ts.
+name: Release
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Resume the publish of this version (PUB-8)
+        required: false
+      rollback_to:
+        description: Move stable back to this released tag, v<version> (PUB-9)
+        required: false
+permissions:
+  contents: read
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  plan:
+    if: ${{ !inputs.rollback_to }}
+    runs-on: ubuntu-24.04
+    outputs:
+      publish: ${{ steps.plan.outputs.publish }}
+      resume: ${{ steps.plan.outputs.resume }}
+      version: ${{ steps.plan.outputs.version }}
+      prerelease: ${{ steps.plan.outputs.prerelease }}
+      needs_owner: ${{ steps.plan.outputs.needs_owner }}
+      changes: ${{ steps.plan.outputs.changes }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.22.1
+          cache: npm
+      - run: npm ci
+      - id: plan
+        run: node scripts/release.mjs plan ${INPUT_VERSION:+--version "$INPUT_VERSION"}
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+
+  # PUB-4: only a changed license or listing waits here, for a release owner on the `release` environment.
+  owner:
+    needs: plan
+    if: ${{ needs.plan.outputs.publish == 'true' && needs.plan.outputs.needs_owner == 'true' }}
+    runs-on: ubuntu-24.04
+    environment: release
+    steps:
+      - run: |
+          echo "A release owner approved agent.cloud $VERSION with these changes, from the newest released tag: $CHANGES"
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+          CHANGES: ${{ needs.plan.outputs.changes }}
+
+  publish:
+    needs: [plan, owner]
+    if: ${{ always() && needs.plan.outputs.publish == 'true' && (needs.owner.result == 'success' || needs.owner.result == 'skipped') }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.plan.outputs.version }}
+      TAG: v${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.22.1
+          cache: npm
+      # PUB-3: the release owner's checks, then the legal and listing gate.
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run check:generated
+      - run: npm run build -- --release
+      # PUB-5: checksums before anything is pushed.
+      - name: Checksums
+        working-directory: dist/production
+        run: sha256sum -c SHA256SUMS
+      # PUB-6, PUB-8: the tag (kept when it's already at this commit), then the release (kept when it has the assets).
+      - name: Tag
+        run: |
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            test "$(git rev-parse "$TAG^{commit}")" = "$GITHUB_SHA"
+          else
+            git tag "$TAG" "$GITHUB_SHA"
+            git push origin "refs/tags/$TAG"
+          fi
+      - name: Release
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then exit 0; fi
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" --jq '.[0] | "#\(.number): \(.title)"' || true)
+          gh release create "$TAG" --verify-tag --title "agent.cloud $VERSION" --notes "${pr:-$GITHUB_SHA}" \
+            ${{ needs.plan.outputs.prerelease == 'true' && '--prerelease' || '' }} \
+            dist/production/submissions/*.zip dist/production/SHA256SUMS
+      # PUB-7: the published assets, downloaded, against SHA256SUMS and the build.
+      - name: Verify the release's assets
+        run: |
+          mkdir -p "$RUNNER_TEMP/assets"
+          gh release download "$TAG" --dir "$RUNNER_TEMP/assets" --clobber
+          if ! node scripts/release.mjs verify --assets "$RUNNER_TEMP/assets" --built dist/production; then
+            gh release edit "$TAG" --prerelease --notes "Not shipped: its assets didn't verify after upload, so stable stayed where it was."
+            exit 1
+          fi
+      # PUB-7: stable moves only now, as a fast-forward, and is read back: a GITHUB_TOKEN push starts no check.yml.
+      - name: Move stable
+        id: channel
+        if: ${{ needs.plan.outputs.prerelease != 'true' }}
+        run: |
+          from=$(git ls-remote origin refs/heads/stable | cut -f1)
+          echo "from=$from" >> "$GITHUB_OUTPUT"
+          if [ "$from" != "$GITHUB_SHA" ]; then git push origin "$GITHUB_SHA:refs/heads/stable"; fi
+          node scripts/release.mjs channel --read "$(git ls-remote origin refs/heads/stable | cut -f1)" --want "$GITHUB_SHA"
+      # PUB-11: what the run did.
+      - name: Summary
+        if: ${{ always() }}
+        run: |
+          assets=$(cd dist/production/submissions 2>/dev/null && sha256sum *.zip | awk '{printf "\"%s\":\"%s\",", $2, $1}')
+          node scripts/release.mjs summary --json "{\"what\":\"Published\",\"version\":\"$VERSION\",\"tag\":\"$TAG\",\"commit\":\"$GITHUB_SHA\",\"release\":\"$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG\",\"assets\":{${assets%,}},\"owner\":${OWNER},\"channel\":${CHANNEL}}"
+        env:
+          OWNER: ${{ needs.owner.result == 'success' && format('"approved on the release environment ({0})"', needs.plan.outputs.changes) || 'null' }}
+          CHANNEL: ${{ steps.channel.outcome == 'success' && format('{{"from":"{0}","to":"{1}"}}', steps.channel.outputs.from, github.sha) || 'null' }}
+
+  # PUB-9: a release owner moves stable back to an older released tag; tags never move.
+  rollback:
+    if: ${{ inputs.rollback_to }}
+    runs-on: ubuntu-24.04
+    environment: release
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TO: ${{ inputs.rollback_to }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.22.1
+          cache: npm
+      - run: npm ci
+      - name: Move stable back
+        run: |
+          from=$(git ls-remote origin refs/heads/stable | cut -f1)
+          bad=$(git show "$from:package.json" | node -p 'JSON.parse(require("fs").readFileSync(0)).version')
+          released=$(gh release list --limit 200 --json tagName --jq '[.[].tagName] | join(",")')
+          node scripts/release.mjs rollback --to "$TO" --released "$released" --channel-version "$bad" > "$RUNNER_TEMP/target"
+          commit=$(sed -n 's/^commit=//p' "$RUNNER_TEMP/target")
+          git push --force origin "$commit:refs/heads/stable"
+          node scripts/release.mjs channel --read "$(git ls-remote origin refs/heads/stable | cut -f1)" --want "$commit"
+          gh release edit "v$bad" --prerelease --notes "Rolled back: stable moved back to $TO. A fix ships as a higher version."
+          node scripts/release.mjs summary --json "{\"what\":\"Rolled back from\",\"version\":\"$bad\",\"tag\":\"$TO\",\"commit\":\"$commit\",\"channel\":{\"from\":\"$from\",\"to\":\"$commit\"}}"

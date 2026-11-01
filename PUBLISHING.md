@@ -42,7 +42,7 @@ Review the staged file list for credentials or unintended local files before com
 
 ## Releases publish themselves on merge
 
-**Status:** spec, proposed 1 Nov 2026. Not built: the hand steps above are how a release goes out until it is. v0.2.0 went out by hand on 30 Oct, and 0.2.1 (9b4dbfd, merged 1 Nov) is waiting for the same.
+**Status:** spec, proposed 1 Nov 2026. Built as `.github/workflows/release.yml` and `scripts/release.mjs`, tested in `test/release-workflow.test.ts`, and not yet run here: the scratch-repository proofs below come first, and the hand steps above are how a release goes out until then. v0.2.0 went out by hand on 30 Oct, and 0.2.1 (9b4dbfd, merged 1 Nov) is waiting for the same.
 
 **Who it's for and why.** Today a release owner has to run every step above, so a merged version waits for a person even when nothing a person must decide has changed. This workflow publishes a merged version by itself. A person is asked only for the two things that are theirs: a changed license, or a changed listing.
 

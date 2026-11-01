@@ -13,7 +13,7 @@ function temporary(t: test.TestContext) {
 }
 test('PLG-29: public repository contains editable source, standalone lock/toolchain, complete tests and CI', t => {
   const dir = temporary(t), built = buildPackage({ out: join(dir, 'build') }), files = readArtifactDirectory(built.repository);
-  for (const path of ['package.json', 'package-lock.json', 'tsconfig.json', 'pins.json', 'release.config.json', 'scripts/build.mjs', 'scripts/release-config.mjs', 'scripts/validate.mjs', 'scripts/generated.mjs', 'skills/setup/SKILL.md', 'content/README.md', 'content/DEVELOPMENT.md', 'schemas/plugin.schema.json', 'test/connection.test.ts', 'test/source.test.ts', 'test/fixtures/setup.json', '.github/workflows/check.yml', 'DEVELOPMENT.md']) assert.ok(files.has(path), path);
+  for (const path of ['package.json', 'package-lock.json', 'tsconfig.json', 'pins.json', 'release.config.json', 'scripts/build.mjs', 'scripts/release-config.mjs', 'scripts/validate.mjs', 'scripts/generated.mjs', 'scripts/release.mjs', 'test/release-workflow.test.ts', '.github/workflows/release.yml', 'skills/setup/SKILL.md', 'content/README.md', 'content/DEVELOPMENT.md', 'schemas/plugin.schema.json', 'test/connection.test.ts', 'test/source.test.ts', 'test/fixtures/setup.json', '.github/workflows/check.yml', 'DEVELOPMENT.md']) assert.ok(files.has(path), path);
   const metadata = JSON.parse(files.get('package.json')!.toString()), lock = JSON.parse(files.get('package-lock.json')!.toString());
   assert.equal(lock.packages[''].version, metadata.version); assert.equal(metadata.workspaces, undefined);
   assert.ok(metadata.devDependencies.typescript); assert.ok(metadata.devDependencies['@types/node']);
