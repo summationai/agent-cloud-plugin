@@ -72,7 +72,7 @@ Review the staged file list for credentials or unintended local files before com
   - A client that already updated gets the older version back on its next update, even though the version went down. In Claude Code that's `claude plugin marketplace update` then `claude plugin update`; in Codex, `codex plugin marketplace upgrade` then re-adding the plugin. Both were proven on a scratch repository on 1 Nov 2026 (below).
   - Background auto-update isn't proven to follow a lower version. So a rollback is still followed by a fix-forward: a pull request that reverts the change and bumps the patch version, which publishes by PUB-1.
 - **PUB-10: The least access that does the job.**
-  - Only the publish job gets `contents: write`, through `GITHUB_TOKEN`, for the tag and the release. Every other job stays `contents: read`, as `check.yml` is now.
+  - Only the publish and rollback jobs get `contents: write`, through `GITHUB_TOKEN`, for tags and releases. Every other job stays `contents: read`, as `check.yml` is now.
   - A ruleset on `stable` restricts updates, deletions and force pushes. Its bypass list holds exactly two entries: the repository's one deploy key, and the release owners' team.
   - `GITHUB_TOKEN` can't move `stable`. GitHub refuses GitHub Actions as a ruleset bypass actor, so the workflow pushes `stable` with that deploy key instead.
   - The deploy key's private half is the workflow's only other secret, `STABLE_DEPLOY_KEY`. It's a secret of a `stable-push` environment that only `main` may deploy to, so a branch or a fork can't read it. The move and the rollback's move are the only steps that use it.
