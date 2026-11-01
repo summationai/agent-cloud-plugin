@@ -48,23 +48,26 @@ Review the staged file list for credentials or unintended local files before com
 
 **Rules.**
 
-- **PUB-1: A merge that bumps the version publishes it.** A push to `main` whose `package.json` version differs from its first parent's, with no `v<version>` tag yet, starts a publish of that commit. A push that doesn't change the version publishes nothing. A run that stopped can be started again by hand (`workflow_dispatch` with the version), and it goes through the same rules.
-- **PUB-2: One version, higher than the last.** These must all carry the same version: `package.json`, `package-lock.json`, `release.json`, and the generated `plugins/agent-cloud` manifests (`plugin.json`, `.claude-plugin/plugin.json`, `bundle.json`). It must also be greater, by semver, than the newest released tag. Otherwise the run fails before anything is built or pushed, and names the file or the tag.
+- **PUB-1: A merge that bumps the version publishes it.** A push to `main` whose `package.json` version differs from its first parent's, with no `v<version>` tag yet, starts a publish of that commit. A push that doesn't change the version publishes nothing. A run that stopped can be started again by hand (`workflow_dispatch` with the version); it goes through the same rules and resumes by PUB-8.
+- **PUB-2: One version, higher than the last.** These must all carry the same version: `package.json`, `package-lock.json`, `release.json`, and the generated `plugins/agent-cloud` manifests (`plugin.json`, `.claude-plugin/plugin.json`, `bundle.json`). It must also be greater, by semver, than every other `v*` tag. A `v<version>` tag already at this same commit is this version's own, left by a run that stopped before it finished, and the run resumes from it (PUB-8); one at another commit is a failure. Otherwise the run fails before anything is built or pushed, and names the file or the tag.
 - **PUB-3: The same checks a release owner runs.** The run does `npm ci`, `npm test`, `npm run typecheck`, `npm run check:generated` and then `npm run build -- --release`. The `--release` build is the legal and listing gate: it fails on an unset license, a missing icon or any other release-readiness gap. Any failure stops the run with no tag, release or `stable` move.
-- **PUB-4: A changed license or listing waits for the release owner; nothing else does.** The run compares these against the newest released tag:
-  - the license (`release.config.json` `license`, `release-assets/LICENSE`);
-  - the listing values (`release.config.json` `marketplace`, `plugin` and `openai`, and `release-assets/icon.png`).
+- **PUB-4: A changed license or listing waits for the release owner; nothing else does.** The run compares what the release-ready build selects, by content, against the same read from the newest released tag's tree with the same loader (`scripts/release-config.mjs`):
+  - the license: its identifier, and the bytes of the license text `license.file` names, wherever it points;
+  - the listing: `release.config.json`'s `marketplace`, `plugin` and `openai` values, and the bytes of the icon `plugin.icon` names, wherever it points.
+
+  A file that moved, or a path that now names another file, counts as a change only when the selected bytes or values differ.
 
   If any of them changed, or there's no released tag yet, the publish job waits for a release owner's approval on the repository's `release` environment, whose required reviewers are the release owners. The approval page shows the diff. Code, skills, pins, docs and every other change publish with no person.
 - **PUB-5: Checksums before anything is pushed.** The run writes `SHA256SUMS` for both provider ZIPs in `dist/production/` and checks it with `sha256sum -c SHA256SUMS` before it tags.
 - **PUB-6: Tag, then a GitHub release.** The run tags the merge commit `v<version>`, pushes the tag, and runs `gh release create v<version> --verify-tag --title "agent.cloud <version>"` with both ZIPs and `SHA256SUMS`. Its notes name the merged pull request. A version with a pre-release suffix (`-alpha.N`, `-rc.N`) becomes a GitHub pre-release and never moves `stable`.
-- **PUB-7: `stable` moves only after the published assets verify.** The run downloads the release's assets from GitHub and checks them two ways: `sha256sum -c` against the published `SHA256SUMS`, and against the digests of the ZIPs it built. Only then does it push `v<version>^{commit}:refs/heads/stable`, as a fast-forward. `check.yml`'s existing "Release channel points at the released tag" step must then pass on `stable`. If the assets don't verify, `stable` stays where it was, the release is marked a pre-release with a note saying why, and the run fails.
+- **PUB-7: `stable` moves only after the published assets verify.** The run downloads the release's assets from GitHub and checks them two ways: `sha256sum -c` against the published `SHA256SUMS`, and against the digests of the ZIPs it built. Only then does it push `v<version>^{commit}:refs/heads/stable`, as a fast-forward. It then reads `stable` back from GitHub and checks that it points at `v<version>^{commit}`, the same check as `check.yml`'s "Release channel points at the released tag" step. The run does this itself because a push made with `GITHUB_TOKEN` starts no other workflow, so `check.yml` won't run on it. If the assets don't verify, `stable` stays where it was, the release is marked a pre-release with a note saying why, and the run fails.
 - **PUB-8: A re-run picks up where it stopped, and never moves a tag.**
-  - A tag that already points at the same commit is kept, and the run goes on.
-  - A release that already has the same assets is kept.
+  - A tag that already points at the same commit is kept, and the run goes on (PUB-2's resume).
+  - A release that already has the same assets is kept, and the run goes on to PUB-7's checks.
+  - A `stable` already at this tag's commit leaves nothing to do, and the run ends successfully.
   - A tag at another commit stops the run with a failure.
   - Publishes run one at a time, in one concurrency group: a second bump queues behind the first and is never cancelled.
-- **PUB-9: A bad release rolls back by moving `stable` to the previous tag, then a fix goes forward.** A release owner runs the workflow's rollback (`workflow_dispatch` with `rollback_to: v<older>`, behind the `release` environment). It moves `stable` back to that tag's commit, and only to a released, non-pre-release tag older than `stable`. The bad release and its tag stay: tags never move. The release is marked a pre-release with a note naming the rollback.
+- **PUB-9: A bad release rolls back by moving `stable` to the previous tag, then a fix goes forward.** A release owner runs the workflow's rollback (`workflow_dispatch` with `rollback_to: v<older>`, behind the `release` environment). It moves `stable` back to that tag's commit, and only to a released, non-pre-release tag older than `stable`. It then reads `stable` back as PUB-7 does. The bad release and its tag stay: tags never move. The release is marked a pre-release with a note naming the rollback.
   - Installs and `claude plugin marketplace update` read `stable`, so new installs get the older version at once.
   - A client that already updated keeps the bad version until a higher one ships, because clients update only when the version goes up. So a rollback is followed by a fix-forward: a pull request that reverts the change and bumps the patch version, which publishes by PUB-1.
 - **PUB-10: The least access that does the job.** Only the publish and rollback jobs get `contents: write`, through `GITHUB_TOKEN`; every other job stays `contents: read`, as `check.yml` is now. No other secret is used. A ruleset protects `stable` so that only this workflow and the release owners can push to it, and nobody commits to it directly. `main`'s protection is unchanged.
@@ -79,17 +82,17 @@ Review the staged file list for credentials or unintended local files before com
 
 **How each rule is tested.** The workflow's decisions live in `scripts/release.mjs` as functions that take plain inputs, tested in `test/release-workflow.test.ts` by rule ID. The workflow file only calls them and the commands above.
 - PUB-1: version changed or unchanged against the first parent; a tag that already exists; the manual re-run.
-- PUB-2: each file out of step with the others; equal to the newest tag; lower than it; pre-release ordering.
+- PUB-2: each file out of step with the others; equal to another tag; lower than the newest; pre-release ordering; this version's own tag at this commit resumes, at another commit fails.
 - PUB-3: each command's failure stops the run before the tag step. The workflow's step order is checked from the YAML.
-- PUB-4: a change to each listed license or listing path asks the release owner; a change to code, skills, pins or docs doesn't; with no previous tag it asks.
-- PUB-5 and PUB-7: a ZIP edited after `SHA256SUMS`, a downloaded asset that differs, and a missing asset each keep `stable` where it was.
+- PUB-4: each of these asks the release owner: a changed license identifier, changed license bytes, `license.file` pointing at a file with other bytes, the same three for the icon, and each changed listing value. A moved file with the same bytes doesn't ask, and neither does a change to code, skills, pins or docs. With no previous tag it asks. Each case runs on the real loader and build, not on path names.
+- PUB-5 and PUB-7: a ZIP edited after `SHA256SUMS`, a downloaded asset that differs, and a missing asset each keep `stable` where it was. A `stable` read back at another commit fails the run.
 - PUB-6: a pre-release version never moves `stable`.
-- PUB-8: tag at the same commit goes on; tag at another commit fails; the concurrency group never cancels.
+- PUB-8: each partial state resumes from where it stopped: a tag only; a tag and its release; a tag, its release and `stable` moved (nothing left to do). A tag at another commit fails, and the concurrency group never cancels.
 - PUB-9: rollback only to an older, released, non-pre-release tag, and refused otherwise.
 - PUB-10: the workflow's `permissions` per job, read from the YAML.
 - PUB-11: the summary's fields.
 
-The whole workflow is then rehearsed end to end on a scratch repository, publishing and rolling back a version, before it runs here.
+The whole workflow is then rehearsed end to end on a scratch repository before it runs here: a publish, a run stopped after its tag and then resumed, and a rollback.
 
 ## Submit each provider artifact
 
