@@ -188,7 +188,12 @@ test('PUB-9: a rollback moves stable only to an older, released, non-pre-release
   assert.match(workflow.jobs.rollback.steps.at(-1).run, /gh release list --limit 200 --json tagName,isDraft,isPrerelease/);
   assert.equal(workflow.jobs['rollback-approve'].environment, 'release', 'a release owner approves first');
   assert.equal(workflow.jobs.rollback.needs, 'rollback-approve');
-  assert.match(workflow.jobs.rollback.steps.at(-1).run, /git push --force[\s\S]*release\.mjs channel --read[\s\S]*--prerelease/);
+  // Troy on #18: the bad release is quarantined before stable moves, so a publish re-run refuses it and a rollback retried
+  // after a move that failed finishes; one that finds stable already at the target only reads it back.
+  const back9 = workflow.jobs.rollback.steps.at(-1).run as string;
+  assert.match(back9, /gh release edit "v\$bad" --prerelease[\s\S]*git push --force[\s\S]*release\.mjs channel --read/);
+  assert.equal(back9.match(/--prerelease/g)!.length, 1, 'quarantined once, before the move');
+  assert.match(back9, /if \[ "v\$bad" = "\$TO" \]; then[\s\S]*release\.mjs channel --read "\$from"[\s\S]*exit 0[\s\S]*fi[\s\S]*release\.mjs rollback/);
 });
 
 test('PUB-10: only publish and rollback write; only the deploy key on the main-only environment moves stable', () => {
@@ -215,4 +220,28 @@ test('PUB-11: the summary says what the run did', () => {
   const text = summary({ what: 'Published', version: '0.2.1', tag: 'v0.2.1', commit: 'd1', release: 'https://github.com/o/r/releases/tag/v0.2.1', assets: { 'a.zip': 'f00' }, owner: null, channel: { from: 'c0', to: 'd1' } });
   for (const part of ['agent.cloud 0.2.1', '`v0.2.1` at `d1`', 'releases/tag/v0.2.1', '`a.zip`: `f00`', 'not asked: no license or listing change', 'stable: `c0` → `d1`']) assert.ok(text.includes(part), part);
   assert.ok(summary({ what: 'Published', version: '0.3.0-rc.1', tag: 'v0.3.0-rc.1', commit: 'e', channel: null }).includes('stable: not moved'));
+});
+
+// Troy on #18: the workflow's own Summary step, run as written, says what the run did from each step's outcome, and links
+// the release only when the release step succeeded.
+test('PUB-11: the Summary step says Published only when every step that publishes succeeded, and where it stopped otherwise', () => {
+  const run = steps('publish')[at('publish', (s) => s.name === 'Summary')]!.run!;
+  const say = (o: Record<string, string>) => execFileSync('bash', ['-c', run], { cwd: root, encoding: 'utf8', env: { ...process.env,
+    VERSION: '0.3.0', TAG: 'v0.3.0', GITHUB_SHA: 'd1', GITHUB_SERVER_URL: 'https://github.com', GITHUB_REPOSITORY: 'o/r', GITHUB_STEP_SUMMARY: '',
+    OWNER: 'null', CHANNEL: 'null', PRERELEASE: 'false', TAG_OUTCOME: 'success', RELEASE_OUTCOME: 'success', VERIFY_OUTCOME: 'success', CHANNEL_OUTCOME: 'success', ...o } });
+  const link = 'https://github.com/o/r/releases/tag/v0.3.0';
+  const cases: [Record<string, string>, RegExp, boolean][] = [
+    [{}, /^## Published agent\.cloud 0\.3\.0$/m, true],
+    [{ TAG_OUTCOME: 'failure', RELEASE_OUTCOME: 'skipped', VERIFY_OUTCOME: 'skipped', CHANNEL_OUTCOME: 'skipped' }, /^## Failed before or at the tag, nothing published: agent\.cloud 0\.3\.0$/m, false],
+    [{ TAG_OUTCOME: 'skipped', RELEASE_OUTCOME: 'skipped', VERIFY_OUTCOME: 'skipped', CHANNEL_OUTCOME: 'skipped' }, /^## Failed before or at the tag, nothing published:/m, false],
+    [{ RELEASE_OUTCOME: 'failure', VERIFY_OUTCOME: 'skipped', CHANNEL_OUTCOME: 'skipped' }, /^## Failed at the release, nothing published:/m, false],
+    [{ VERIFY_OUTCOME: 'failure', CHANNEL_OUTCOME: 'skipped' }, /^## Quarantined, its assets didn't verify:/m, true],
+    [{ CHANNEL_OUTCOME: 'failure' }, /^## Released, but stable didn't move:/m, true],
+    [{ PRERELEASE: 'true', CHANNEL_OUTCOME: 'skipped' }, /^## Published the pre-release agent\.cloud 0\.3\.0$/m, true],
+  ];
+  for (const [o, said, linked] of cases) {
+    const text = say(o);
+    assert.match(text, said, JSON.stringify(o));
+    assert.equal(text.includes(link), linked, `release link for ${JSON.stringify(o)}`);
+  }
 });

@@ -95,6 +95,7 @@ jobs:
         run: sha256sum -c SHA256SUMS
       # PUB-6, PUB-8: the tag (kept when it's already at this commit), then the release (kept when it has the assets).
       - name: Tag
+        id: tag
         run: |
           if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
             test "$(git rev-parse "$TAG^{commit}")" = "$GITHUB_SHA"
@@ -103,6 +104,7 @@ jobs:
             git push origin "refs/tags/$TAG"
           fi
       - name: Release
+        id: release
         run: |
           path_of() { if [ "$1" = SHA256SUMS ]; then echo dist/production/SHA256SUMS; else echo "dist/production/submissions/$1"; fi; }
           wanted="$(cd dist/production/submissions && ls *.zip | paste -sd, -),SHA256SUMS"
@@ -123,6 +125,7 @@ jobs:
           esac
       # PUB-7: the published assets, downloaded, against SHA256SUMS and the build.
       - name: Verify the release's assets
+        id: verify
         run: |
           mkdir -p "$RUNNER_TEMP/assets"
           gh release download "$TAG" --dir "$RUNNER_TEMP/assets" --clobber
@@ -149,13 +152,26 @@ jobs:
             rm -rf "$ssh_dir"
           fi
           node scripts/release.mjs channel --read "$(git ls-remote origin refs/heads/stable | cut -f1)" --want "$GITHUB_SHA"
-      # PUB-11: what the run did.
+      # PUB-11: what the run did, from each step's outcome: Published only when every step that publishes succeeded, and the
+      # release's link only when the release step did (created, completed or kept).
       - name: Summary
         if: ${{ always() }}
         run: |
           assets=$(cd dist/production/submissions 2>/dev/null && sha256sum *.zip | awk '{printf "\"%s\":\"%s\",", $2, $1}')
-          node scripts/release.mjs summary --json "{\"what\":\"Published\",\"version\":\"$VERSION\",\"tag\":\"$TAG\",\"commit\":\"$GITHUB_SHA\",\"release\":\"$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG\",\"assets\":{${assets%,}},\"owner\":${OWNER},\"channel\":${CHANNEL}}"
+          what=Published; release="\"$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG\""
+          if [ "$TAG_OUTCOME" != success ]; then what="Failed before or at the tag, nothing published:"; release=null
+          elif [ "$RELEASE_OUTCOME" != success ]; then what="Failed at the release, nothing published:"; release=null
+          elif [ "$VERIFY_OUTCOME" != success ]; then what="Quarantined, its assets didn't verify:"
+          elif [ "$PRERELEASE" = true ]; then what="Published the pre-release"
+          elif [ "$CHANNEL_OUTCOME" != success ]; then what="Released, but stable didn't move:"
+          fi
+          node scripts/release.mjs summary --json "{\"what\":\"$what\",\"version\":\"$VERSION\",\"tag\":\"$TAG\",\"commit\":\"$GITHUB_SHA\",\"release\":$release,\"assets\":{${assets%,}},\"owner\":${OWNER},\"channel\":${CHANNEL}}"
         env:
+          TAG_OUTCOME: ${{ steps.tag.outcome }}
+          RELEASE_OUTCOME: ${{ steps.release.outcome }}
+          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
+          CHANNEL_OUTCOME: ${{ steps.channel.outcome }}
+          PRERELEASE: ${{ needs.plan.outputs.prerelease }}
           OWNER: ${{ needs.owner.result == 'success' && format('"approved on the release environment ({0})"', needs.plan.outputs.changes) || 'null' }}
           CHANNEL: ${{ steps.channel.outcome == 'success' && format('{{"from":"{0}","to":"{1}"}}', steps.channel.outputs.from, github.sha) || 'null' }}
 
@@ -196,9 +212,17 @@ jobs:
         run: |
           from=$(git ls-remote origin refs/heads/stable | cut -f1)
           bad=$(git show "$from:package.json" | node -p 'JSON.parse(require("fs").readFileSync(0)).version')
+          # A retry after the move went through (stable is already at the target): read it back and say so.
+          if [ "v$bad" = "$TO" ]; then
+            node scripts/release.mjs channel --read "$from" --want "$(git rev-parse "$TO^{commit}")"
+            echo "stable is already at $TO: the rollback is done."; exit 0
+          fi
           releases=$(gh release list --limit 200 --json tagName,isDraft,isPrerelease)
           node scripts/release.mjs rollback --to "$TO" --releases "$releases" --channel-version "$bad" > "$RUNNER_TEMP/target"
           commit=$(sed -n 's/^commit=//p' "$RUNNER_TEMP/target")
+          # PUB-9: the bad release is quarantined before stable moves, so a publish re-run refuses that version (ready) and a
+          # rollback retried after a move that failed computes the same target and finishes.
+          gh release edit "v$bad" --prerelease --notes "Rolled back: stable moves back to $TO. A fix ships as a higher version."
           ssh_dir="$RUNNER_TEMP/stable-ssh"; mkdir -m 700 "$ssh_dir"
           printf '%s\n' "$STABLE_DEPLOY_KEY" > "$ssh_dir/key"; chmod 600 "$ssh_dir/key"
           echo "github.com $GITHUB_HOST_KEY" > "$ssh_dir/known_hosts"
@@ -206,5 +230,4 @@ jobs:
             git push --force "git@github.com:$GITHUB_REPOSITORY.git" "$commit:refs/heads/stable"
           rm -rf "$ssh_dir"
           node scripts/release.mjs channel --read "$(git ls-remote origin refs/heads/stable | cut -f1)" --want "$commit"
-          gh release edit "v$bad" --prerelease --notes "Rolled back: stable moved back to $TO. A fix ships as a higher version."
           node scripts/release.mjs summary --json "{\"what\":\"Rolled back from\",\"version\":\"$bad\",\"tag\":\"$TO\",\"commit\":\"$commit\",\"channel\":{\"from\":\"$from\",\"to\":\"$commit\"}}"
