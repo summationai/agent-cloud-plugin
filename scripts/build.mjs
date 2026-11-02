@@ -140,11 +140,11 @@ export function buildPackage({ environment = 'production', out, sourceRoot = pac
   // Publish maintainable source as well as the ready-to-install tree. No private
   // imports, workspace lock, dependency directory or Git history is exported.
   for (const path of [...sources, 'package.json', 'package-lock.json', 'tsconfig.json', 'pins.json', '.gitignore',
-    'scripts/build.mjs', 'scripts/release-config.mjs', 'scripts/validate.mjs', 'scripts/generated.mjs',
+    'scripts/build.mjs', 'scripts/release-config.mjs', 'scripts/validate.mjs', 'scripts/generated.mjs', 'scripts/release.mjs',
     'schemas/plugin.schema.json', 'schemas/mcp.schema.json',
     'content/README.md', 'content/CLIENTS.md', 'content/ACCEPTANCE.md', 'content/PUBLISHING.md', 'content/DEVELOPMENT.md',
-    'test/package.test.ts', 'test/setup.test.ts', 'test/release.test.ts', 'test/source.test.ts', 'test/connection.test.ts', 'test/fixtures/setup.json',
-    '.github/workflows/check.yml']) repository.set(path, read(path));
+    'test/package.test.ts', 'test/setup.test.ts', 'test/release.test.ts', 'test/source.test.ts', 'test/connection.test.ts', 'test/release-workflow.test.ts', 'test/fixtures/setup.json',
+    '.github/workflows/check.yml', '.github/workflows/release.yml']) repository.set(path, read(path));
   repository.set('release.config.json', json({ ...config, license: { ...config.license, file: license ? 'release-assets/LICENSE' : null }, plugin: { ...config.plugin, icon: icon ? 'release-assets/icon.png' : null } }));
   if (license) repository.set('release-assets/LICENSE', license);
   if (icon) repository.set('release-assets/icon.png', icon.bytes);

@@ -42,7 +42,7 @@ Review the staged file list for credentials or unintended local files before com
 
 ## Releases publish themselves on merge
 
-**Status:** spec, proposed 1 Nov 2026. Not built: the hand steps above are how a release goes out until it is. v0.2.0 went out by hand on 30 Oct, and 0.2.1 (9b4dbfd, merged 1 Nov) is waiting for the same.
+**Status:** spec, proposed 1 Nov 2026. Built as `.github/workflows/release.yml` and `scripts/release.mjs`, tested in `test/release-workflow.test.ts`, and not yet run here: the scratch-repository proofs below come first, and the hand steps above are how a release goes out until then. v0.2.0 went out by hand on 30 Oct, and 0.2.1 (9b4dbfd, merged 1 Nov) is waiting for the same.
 
 **Who it's for and why.** Today a release owner has to run every step above, so a merged version waits for a person even when nothing a person must decide has changed. This workflow publishes a merged version by itself. A person is asked only for the two things that are theirs: a changed license, or a changed listing.
 
@@ -69,7 +69,7 @@ Review the staged file list for credentials or unintended local files before com
   - A `stable` already at this tag's commit leaves nothing to do, and the run ends successfully.
   - A tag at another commit stops the run with a failure.
   - Publishes run one at a time, in one concurrency group that keeps every pending run in order (`queue: max`): a later push never replaces a version bump that's waiting.
-- **PUB-9: A bad release rolls back by moving `stable` to the previous tag, then a fix goes forward.** A release owner runs the workflow's rollback (`workflow_dispatch` with `rollback_to: v<older>`, behind the `release` environment). It moves `stable` back to that tag's commit, and only to an older tag whose GitHub release is published, not a draft, a pre-release or quarantined. It then reads `stable` back as PUB-7 does. The bad release and its tag stay: tags never move. The release is marked a pre-release with a note naming the rollback.
+- **PUB-9: A bad release rolls back by moving `stable` to the previous tag, then a fix goes forward.** A release owner runs the workflow's rollback (`workflow_dispatch` with `rollback_to: v<older>`, behind the `release` environment). It moves `stable` back to that tag's commit, and only to an older tag whose GitHub release is published, not a draft, a pre-release or quarantined. Before it moves `stable`, it marks the bad release a pre-release with a note naming the rollback, so a publish re-run refuses that version and a rollback retried after a move that failed computes the same target and finishes; one that finds `stable` already at the target only reads it back. It then reads `stable` back as PUB-7 does. The bad release and its tag stay: tags never move.
   - Installs read `stable`, so a new install gets the older version at once.
   - A client that already updated gets the older version back on its next update, even though the version went down. In Claude Code that's `claude plugin marketplace update` then `claude plugin update`; in Codex, `codex plugin marketplace upgrade` then re-adding the plugin. Both were proven on a scratch repository on 1 Nov 2026 (below).
   - Background auto-update isn't proven to follow a lower version. So a rollback is still followed by a fix-forward: a pull request that reverts the change and bumps the patch version, which publishes by PUB-1.
@@ -79,7 +79,7 @@ Review the staged file list for credentials or unintended local files before com
   - `GITHUB_TOKEN` can't move `stable`. GitHub refuses GitHub Actions as a ruleset bypass actor, so the workflow pushes `stable` with that deploy key instead.
   - The deploy key's private half is the workflow's only other secret, `STABLE_DEPLOY_KEY`. It's a secret of a `stable-push` environment that only `main` may deploy to, so a branch or a fork can't read it. The move and the rollback's move are the only steps that use it.
   - `main`'s protection is unchanged.
-- **PUB-11: Each run says what it did.** The job summary lists the version, the tag and commit, the release URL, each asset's SHA-256, whether a release owner was asked (and who approved), and `stable`'s move from one commit to the other. A rollback lists the same.
+- **PUB-11: Each run says what it did.** The job summary lists the version, the tag and commit, the release URL, each asset's SHA-256, whether a release owner was asked (and who approved), and `stable`'s move from one commit to the other. A rollback lists the same. What it says comes from each step's outcome: Published only when the tag, the release, its verification and (for a version that isn't a pre-release) `stable`'s move all succeeded; otherwise where it stopped (at the tag or before it, or at the release, nothing published) or what's partial (quarantined because its assets didn't verify, or released with `stable` not moved). It links the release only when the release step succeeded.
 
 **Out of scope.** The provider submissions below (OpenAI's dashboard, Anthropic's directory) stay a person's. So does anything a reviewer must enter. This spec doesn't publish to npm or change how the source is built.
 
