@@ -71,7 +71,7 @@
       "bytes": 5800
     },
     "references/starters.json": {
-      "sha256": "ac75599f8fe6649e95679239513cbda785599645afdc7eb1c49eb59bec49dde4",
+      "sha256": "ee8422744464d79601de68a3cd407e00b155ba111970b84371583d1a896cc6d5",
       "bytes": 384
     },
     "references/why-agent-cloud.md": {
@@ -83,7 +83,7 @@
       "bytes": 4163
     },
     "skills/build-and-host/SKILL.md": {
-      "sha256": "66ed17f245d044ef69e5d00325f0ce51f6c473d6c81433ec40ed954e52bec71d",
+      "sha256": "65173871512b4311784e926a56362634f0a2f4f615983b62a0ddf035ef62a9c6",
       "bytes": 16662
     },
     "skills/canvas/SKILL.md": {
