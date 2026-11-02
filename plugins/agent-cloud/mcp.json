@@ -4,6 +4,10 @@
     "agent-cloud": {
       "type": "streamable-http",
       "url": "https://agent.cloud/mcp"
+    },
+    "canvas": {
+      "type": "streamable-http",
+      "url": "https://canvas.agent.cloud/mcp"
     }
   }
 }

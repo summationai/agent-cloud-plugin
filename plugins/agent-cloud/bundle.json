@@ -1,6 +1,6 @@
 {
   "name": "agent-cloud",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "environment": "production",
   "target": "combined",
   "repository": "https://github.com/summationai/agent-cloud-plugin",
@@ -15,12 +15,12 @@
   },
   "files": {
     ".claude-plugin/plugin.json": {
-      "sha256": "883c8df02f59a5046843b17b72cb84a576c09579492da1b306e3475397ff3401",
+      "sha256": "505e5c630814adc953dfc3f8af2130b409b7bea259e8cf24519a69408bae5899",
       "bytes": 1012
     },
     ".mcp.json": {
-      "sha256": "81eeec3a860e2bc5861b6b5ddcb18e423530adf49b670212ce7b2fecbfafdd8b",
-      "bytes": 114
+      "sha256": "ab84e65a0633eec5a0fb9b18a5f65c9428a8fa518395f72437b5efb8798dbf21",
+      "bytes": 205
     },
     "ACCEPTANCE.md": {
       "sha256": "0533811d2906cc915c54944b984070ac96ffd803a4d7a6eca4c424070943cc93",
@@ -39,19 +39,23 @@
       "bytes": 98
     },
     "README.md": {
-      "sha256": "02abc0b31251db9549426a143cfc53afb24552730d0d24d2babefbd3cb05d2b8",
+      "sha256": "caee3b41a272668d4118af843d5c41d34540625222f77cf8cd23ae561bf20a74",
       "bytes": 6551
+    },
+    "agents/canvas-builder.md": {
+      "sha256": "fa6ff9d4fa741fc2c39f304fd6c11210a46697bd5f4261360a88c8b093a41c40",
+      "bytes": 1151
     },
     "assets/icon.png": {
       "sha256": "59bbe05aafa8da2d737863c59d0ec45077d5ccf2beb7c1f9c211e22a1dc81861",
       "bytes": 41144
     },
     "mcp.json": {
-      "sha256": "104dcc7ef0f8dbf1dbe34df16a52971c7ec551d139ee9acba3496c1496175579",
-      "bytes": 197
+      "sha256": "a347f080616ed7a26390ef23f4abe0b8d7addf9cdd30c0809d115fd8715b1ae9",
+      "bytes": 299
     },
     "plugin.json": {
-      "sha256": "256941ff3df26b265ed70ac7c0a62a9e1cbf0d8a371d8e8fa6db8c856e5487be",
+      "sha256": "952f3d95fc879541d993a10337aa7d639edb3a202f8459f74fefa0576b3d0b30",
       "bytes": 7091
     },
     "references/connection.md": {
@@ -81,6 +85,10 @@
     "skills/build-and-host/SKILL.md": {
       "sha256": "472a4b6b9ae75076718b574699a72e6ad69621fe4a77680a05ff07715017afe1",
       "bytes": 5418
+    },
+    "skills/canvas/SKILL.md": {
+      "sha256": "0db4cc8540fa260298a5be1e913b30815d52a89f80ebe9eb26ca3ee8f17e9734",
+      "bytes": 2422
     },
     "skills/manage-app/SKILL.md": {
       "sha256": "d151429809428ed8a92c6604eb473a2b1d15ef27cd3c9778cbe69aaaf5f30899",

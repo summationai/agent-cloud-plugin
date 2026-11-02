@@ -49,7 +49,7 @@ export function validateTarget(files, target) {
   }
   if (target === 'openai' && (files.has('.mcp.json') || files.has('.claude-plugin/plugin.json'))) throw Error('OpenAI ZIP contains Claude configuration.');
   if (target === 'claude' && (files.has('mcp.json') || files.has('plugin.json'))) throw Error('Claude ZIP contains portable configuration.');
-  for (const name of ['setup', 'build-and-host', 'manage-app']) {
+  for (const name of ['setup', 'build-and-host', 'manage-app', 'canvas']) {
     const text = files.get(`skills/${name}/SKILL.md`)?.toString();
     const match = text?.match(/^---\n([\s\S]*?)\n---\n/);
     if (!match) throw Error(`Missing skill metadata: ${name}`);
@@ -68,8 +68,10 @@ export function validateTarget(files, target) {
     if (manifest.version !== bundle.version || manifest.name !== bundle.name) throw Error('Manifest and bundle versions differ.');
   }
   for (const path of ['mcp.json', '.mcp.json'].filter(path => files.has(path))) {
-    const servers = Object.values(json(path).mcpServers);
-    if (servers.length !== 1 || servers[0].url !== bundle.resource) throw Error('Manifest and bundle environments differ.');
+    // agent.cloud's own server, which must match the bundle, and at most the canvas beside it, over HTTPS.
+    const { canvas, ...servers } = json(path).mcpServers;
+    if (Object.values(servers).length !== 1 || Object.values(servers)[0].url !== bundle.resource) throw Error('Manifest and bundle environments differ.');
+    if (canvas && !canvas.url?.startsWith('https://')) throw Error('Invalid canvas MCP configuration.');
   }
   return { target, valid: true, files: files.size, version: bundle.version, protocol_version: bundle.protocol_version, environment: bundle.environment };
 }
