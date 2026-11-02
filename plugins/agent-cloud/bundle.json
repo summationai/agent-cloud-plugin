@@ -19,8 +19,8 @@
       "bytes": 1012
     },
     ".mcp.json": {
-      "sha256": "a0b44439acccd25c4afcdd4fb48b7c5043e80f34a3602e7edcef7fe23a1f264b",
-      "bytes": 209
+      "sha256": "ab84e65a0633eec5a0fb9b18a5f65c9428a8fa518395f72437b5efb8798dbf21",
+      "bytes": 205
     },
     "ACCEPTANCE.md": {
       "sha256": "0533811d2906cc915c54944b984070ac96ffd803a4d7a6eca4c424070943cc93",
@@ -51,8 +51,8 @@
       "bytes": 41144
     },
     "mcp.json": {
-      "sha256": "19bb8f1da6a37d2e6ff918141af708ca74cc10b92965a5fee55b94326197cdff",
-      "bytes": 303
+      "sha256": "a347f080616ed7a26390ef23f4abe0b8d7addf9cdd30c0809d115fd8715b1ae9",
+      "bytes": 299
     },
     "plugin.json": {
       "sha256": "952f3d95fc879541d993a10337aa7d639edb3a202f8459f74fefa0576b3d0b30",
