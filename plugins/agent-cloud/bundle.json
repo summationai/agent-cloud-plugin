@@ -51,12 +51,12 @@
       "bytes": 41144
     },
     "mcp.json": {
-      "sha256": "a347f080616ed7a26390ef23f4abe0b8d7addf9cdd30c0809d115fd8715b1ae9",
-      "bytes": 299
+      "sha256": "912eef59762c167f38b2419eb3f05fde50366ecc6e6f8dae0ea28cc4ef891880",
+      "bytes": 11495
     },
     "plugin.json": {
-      "sha256": "952f3d95fc879541d993a10337aa7d639edb3a202f8459f74fefa0576b3d0b30",
-      "bytes": 7091
+      "sha256": "ee28eb8143d9aae7976208cee3ae06f23a9f48c7e584036f82a810138edca913",
+      "bytes": 1786
     },
     "references/connection.md": {
       "sha256": "c1d34800ce2602ae87b35f49e81d1205d1b6493fcde14b2393a1a3dfa4fedad8",

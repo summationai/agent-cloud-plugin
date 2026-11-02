@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import { parse as parseYaml } from 'yaml';
 import { unzipSync } from 'fflate';
-import { validateIcon } from './release-config.mjs';
+import { portableMcpConfig, validateIcon } from './release-config.mjs';
 
 const ajv = new Ajv2020({ strict: true, allErrors: true });
 const schemas = Object.fromEntries(['plugin', 'mcp'].map(name => [name, ajv.compile(JSON.parse(readFileSync(new URL(`../schemas/${name}.schema.json`, import.meta.url), 'utf8')))]));
@@ -33,9 +33,9 @@ export function validateTarget(files, target) {
     }
   }
   if (target !== 'claude') {
-    for (const name of ['plugin', 'mcp']) if (!schemas[name](json(`${name}.json`))) throw Error(`Invalid portable ${name}: ${JSON.stringify(schemas[name].errors)}`);
     const manifest = json('plugin.json');
     const extension = manifest.extensions?.['com.openai'];
+    for (const [name, value] of [['plugin', manifest], ['mcp', portableMcpConfig(json('mcp.json'), extension?.review)]]) if (!schemas[name](value)) throw Error(`Invalid portable ${name}: ${JSON.stringify(schemas[name].errors)}`);
     resource(extension?.onboardingSkill);
     const listing = extension?.interface;
     for (const [key, max] of [['displayName', 30], ['shortDescription', 30], ['longDescription', 4000], ['developerName', 80]]) if (typeof listing?.[key] !== 'string' || !listing[key].length || listing[key].length > max) throw Error(`Invalid OpenAI listing ${key}.`);
