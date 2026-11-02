@@ -6,19 +6,16 @@ description: >-
   its cards, or to make their canvas pick real.
 ---
 
-The canvas (its tools are next_card, write_files, finish and picked_card) shows four takes on one idea; the person picks one and makes it real. The cards are built by you, on the person's own plan; the canvas never calls a model for them.
+The canvas (its tools are waiting_cards, next_card, write_files, finish and picked_card) shows a few takes on one idea; the person picks one and makes it real. The cards are built by you, on the person's own plan; the canvas never calls a model for them.
 
 ## Build the canvas
 
-Build the waiting cards in parallel, never one by one:
-
-1. In Claude Code, start four `agent-cloud:canvas-builder` subagents in one message, each with the prompt "Build one card from my agent.cloud canvas." They work at low effort, so four cards take about a minute and a half.
-2. When they've all reported, if every one built a card, more may be waiting: start four more the same way.
-3. Stop when a builder reports that no card was waiting. Tell the person which cards went live and which, if any, still have failing checks.
+1. **Sign in first.** If the canvas's tools aren't loaded, or a call says to sign in, start the canvas server's sign-in (in Claude Code, its authenticate tool), give the person the link, and ask them to press Allow and tell you when it's done. Never start builders before the tools are loaded: they can't do anything without them.
+2. **Count the cards.** Call waiting_cards. It says how many cards are waiting, without taking any.
+3. **One builder per card, all at once.** In Claude Code, start exactly that many `agent-cloud:canvas-builder` subagents in one message, each with the prompt "Build one card from my agent.cloud canvas." They work at low effort, so each card takes about a minute.
+4. **Check again.** When they've all reported, call waiting_cards again: a change or another canvas may be waiting. Stop when it says nothing is waiting, and tell the person which cards went live and which, if any, still have failing checks.
 
 Where subagents aren't available (Codex), take the cards yourself: next_card, then write_files until every check passes, then finish, and repeat until next_card says nothing is waiting. Keep each card quick: write the files straight away.
-
-If the canvas tools need sign-in, your client opens the browser for it; tell the person to approve it there and wait for them.
 
 ## Make the pick real
 

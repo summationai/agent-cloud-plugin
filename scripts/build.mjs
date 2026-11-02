@@ -36,7 +36,7 @@ export function buildPackage({ environment = 'production', out, sourceRoot = pac
   const origin = environment === 'staging' ? 'https://staging-agent.cloud' : 'https://agent.cloud';
   const name = 'agent-cloud', marketplaceName = config.marketplace.name + (environment === 'staging' ? '-staging' : '');
   const serverName = environment === 'staging' ? 'agent-cloud-staging' : 'agent-cloud';
-  // The canvas: four takes on an idea, built by the person's own agent (skills/canvas). One canvas serves both environments.
+  // The canvas: a few takes on an idea, built by the person's own agent (skills/canvas). One canvas serves both environments.
   const canvasUrl = 'https://canvas.agent.cloud/mcp';
   // Installs follow this branch, never a version tag, so marketplace updates reach each new release.
   const variables = { version, environment, origin, marketplaceName, channel: 'stable', repository: config.repository, repositorySlug: config.repository.replace('https://github.com/', ''), displayName: config.plugin.displayName, stagingFlag: environment === 'staging' ? ' --staging' : '' };
