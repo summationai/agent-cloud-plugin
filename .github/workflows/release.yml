@@ -165,14 +165,15 @@ jobs:
           elif [ "$PRERELEASE" = true ]; then what="Published the pre-release"
           elif [ "$CHANNEL_OUTCOME" != success ]; then what="Released, but stable didn't move:"
           fi
-          node scripts/release.mjs summary --json "{\"what\":\"$what\",\"version\":\"$VERSION\",\"tag\":\"$TAG\",\"commit\":\"$GITHUB_SHA\",\"release\":$release,\"assets\":{${assets%,}},\"owner\":${OWNER},\"channel\":${CHANNEL}}"
+          owner=$(node -p 'JSON.stringify(process.env.OWNER || null)')
+          node scripts/release.mjs summary --json "{\"what\":\"$what\",\"version\":\"$VERSION\",\"tag\":\"$TAG\",\"commit\":\"$GITHUB_SHA\",\"release\":$release,\"assets\":{${assets%,}},\"owner\":${owner},\"channel\":${CHANNEL}}"
         env:
           TAG_OUTCOME: ${{ steps.tag.outcome }}
           RELEASE_OUTCOME: ${{ steps.release.outcome }}
           VERIFY_OUTCOME: ${{ steps.verify.outcome }}
           CHANNEL_OUTCOME: ${{ steps.channel.outcome }}
           PRERELEASE: ${{ needs.plan.outputs.prerelease }}
-          OWNER: ${{ needs.owner.result == 'success' && format('"approved on the release environment ({0})"', needs.plan.outputs.changes) || 'null' }}
+          OWNER: ${{ needs.owner.result == 'success' && format('approved on the release environment ({0})', needs.plan.outputs.changes) || '' }}
           CHANNEL: ${{ steps.channel.outcome == 'success' && format('{{"from":"{0}","to":"{1}"}}', steps.channel.outputs.from, github.sha) || 'null' }}
 
   # PUB-9: a release owner approves on the release environment; then stable moves back to an older released tag with the

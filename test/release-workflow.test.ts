@@ -228,10 +228,11 @@ test('PUB-11: the Summary step says Published only when every step that publishe
   const run = steps('publish')[at('publish', (s) => s.name === 'Summary')]!.run!;
   const say = (o: Record<string, string>) => execFileSync('bash', ['-c', run], { cwd: root, encoding: 'utf8', env: { ...process.env,
     VERSION: '0.3.0', TAG: 'v0.3.0', GITHUB_SHA: 'd1', GITHUB_SERVER_URL: 'https://github.com', GITHUB_REPOSITORY: 'o/r', GITHUB_STEP_SUMMARY: '',
-    OWNER: 'null', CHANNEL: 'null', PRERELEASE: 'false', TAG_OUTCOME: 'success', RELEASE_OUTCOME: 'success', VERIFY_OUTCOME: 'success', CHANNEL_OUTCOME: 'success', ...o } });
+    OWNER: '', CHANNEL: 'null', PRERELEASE: 'false', TAG_OUTCOME: 'success', RELEASE_OUTCOME: 'success', VERIFY_OUTCOME: 'success', CHANNEL_OUTCOME: 'success', ...o } });
   const link = 'https://github.com/o/r/releases/tag/v0.3.0';
   const cases: [Record<string, string>, RegExp, boolean][] = [
     [{}, /^## Published agent\.cloud 0\.3\.0$/m, true],
+    [{ OWNER: 'approved on the release environment (listing: "openai"; schema path \\review\nsecond line)' }, /^## Published agent\.cloud 0\.3\.0$/m, true],
     [{ TAG_OUTCOME: 'failure', RELEASE_OUTCOME: 'skipped', VERIFY_OUTCOME: 'skipped', CHANNEL_OUTCOME: 'skipped' }, /^## Failed before or at the tag, nothing published: agent\.cloud 0\.3\.0$/m, false],
     [{ TAG_OUTCOME: 'skipped', RELEASE_OUTCOME: 'skipped', VERIFY_OUTCOME: 'skipped', CHANNEL_OUTCOME: 'skipped' }, /^## Failed before or at the tag, nothing published:/m, false],
     [{ RELEASE_OUTCOME: 'failure', VERIFY_OUTCOME: 'skipped', CHANNEL_OUTCOME: 'skipped' }, /^## Failed at the release, nothing published:/m, false],
@@ -243,5 +244,6 @@ test('PUB-11: the Summary step says Published only when every step that publishe
     const text = say(o);
     assert.match(text, said, JSON.stringify(o));
     assert.equal(text.includes(link), linked, `release link for ${JSON.stringify(o)}`);
+    if (o.OWNER) assert.ok(text.includes(`- Release owner: ${o.OWNER}`));
   }
 });
