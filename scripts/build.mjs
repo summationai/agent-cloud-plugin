@@ -5,7 +5,7 @@ import { lstatSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync
 import { dirname, isAbsolute, join, posix, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { zipSync } from 'fflate';
-import { loadReleaseConfig } from './release-config.mjs';
+import { loadReleaseConfig, mcpReviewGaps } from './release-config.mjs';
 import { readArtifactZip, validateTarget } from './validate.mjs';
 
 const packageRoot = fileURLToPath(new URL('../', import.meta.url));
@@ -77,6 +77,11 @@ export function buildPackage({ environment = 'production', out, sourceRoot = pac
     shared.set(path, Buffer.from(`${text.trimEnd()}\n\n## References\n\nThese are this skill's references in full. Use them here instead of opening the plugin's files.\n\n${used.map(file => inlineReference(file, shared.get(`references/${file}`).toString(), `skills/${skill}`)).join('\n\n')}\n`));
   }
   const identity = { name, version, description: config.plugin.description, author: config.plugin.author, homepage: config.plugin.homepage, repository: config.repository, keywords: config.plugin.keywords, ...(config.license.id ? { license: config.license.id } : {}) };
+  const reviewedServer = (url, review) => ({ type: 'streamable-http', url, ...(review ? { extensions: { 'com.openai': { review } } } : {}) });
+  const mcpServers = {
+    [serverName]: reviewedServer(`${origin}/mcp`, config.openai.mcpServers?.['agent-cloud']),
+    canvas: reviewedServer(canvasUrl, config.openai.mcpServers?.canvas),
+  };
   const openai = new Map([
     ['plugin.json', json({ $schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', ...identity, extensions: { 'com.openai': {
       onboardingSkill: './skills/setup/SKILL.md', interface: { displayName: config.plugin.displayName, shortDescription: config.plugin.shortDescription, longDescription: config.plugin.description, developerName: config.plugin.author.name, category: config.marketplace.category, websiteURL: config.plugin.homepage,
@@ -84,9 +89,9 @@ export function buildPackage({ environment = 'production', out, sourceRoot = pac
         ...(icon ? { composerIcon: `./${icon.path}`, logo: `./${icon.path}` } : {}),
       }, ...(config.openai.review ? { review: config.openai.review } : {}),
     } } })],
-    // M0-qualified protected-resource discovery/DCR; the portable 1.0.0 server
-    // schema rejects inline auth extensions. No credentials are bundled.
-    ['mcp.json', json({ $schema: 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json', mcpServers: { [serverName]: { type: 'streamable-http', url: `${origin}/mcp` }, canvas: { type: 'streamable-http', url: canvasUrl } } })],
+    // Authentication remains protected-resource discovery/DCR; review cases
+    // belong to each server's OpenAI extension. No credentials are bundled.
+    ['mcp.json', json({ $schema: 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json', mcpServers })],
   ]);
   const claude = new Map([
     ['.claude-plugin/plugin.json', json({ ...identity, displayName: config.plugin.displayName,
@@ -122,7 +127,7 @@ export function buildPackage({ environment = 'production', out, sourceRoot = pac
   const review = config.openai.review;
   const openaiGaps = [
     ...(!review?.demo_recording_url ? ['Supply the reviewer-accessible demo recording URL.'] : []),
-    ...((review?.test_cases?.positive?.length ?? 0) !== 5 || (review?.test_cases?.negative?.length ?? 0) !== 3 ? ['Supply exactly five positive and three negative MCP review cases.'] : []),
+    ...mcpReviewGaps(mcpServers),
   ];
   const readiness = Object.fromEntries(targetNames.map(name => [name, [...commonGaps, ...(name === 'openai' ? openaiGaps : [])]]));
   const report = { version, environment, repository: config.repository, generated: true, validation: validations, submission_metadata_gaps: readiness, publication: { performed_by_build: false, source_repository: 'not_checked', submission: 'not_checked', listing: 'not_checked' }, note: 'Structural validation does not establish live-client acceptance, licensing approval, URL accessibility, provider review or publication.' };
