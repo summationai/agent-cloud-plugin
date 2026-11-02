@@ -10,7 +10,7 @@ import { readArtifactZip, validateTarget } from './validate.mjs';
 
 const packageRoot = fileURLToPath(new URL('../', import.meta.url));
 const sources = [
-  'skills/setup/SKILL.md', 'skills/build-and-host/SKILL.md', 'skills/manage-app/SKILL.md',
+  'skills/setup/SKILL.md', 'skills/build-and-host/SKILL.md', 'skills/manage-app/SKILL.md', 'skills/canvas/SKILL.md', 'agents/canvas-builder.md',
   'references/connection.md', 'references/continuity.md', 'references/local-publishing.md', 'references/why-agent-cloud.md', 'scripts/connect-codex.mjs',
 ];
 const json = value => Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
@@ -47,6 +47,8 @@ export function buildPackage({ environment = 'production', out, sourceRoot = pac
   const origin = environment === 'staging' ? 'https://staging-agent.cloud' : 'https://agent.cloud';
   const name = 'agent-cloud', marketplaceName = config.marketplace.name + (environment === 'staging' ? '-staging' : '');
   const serverName = environment === 'staging' ? 'agent-cloud-staging' : 'agent-cloud';
+  // The canvas: a few takes on an idea, built by the person's own agent (skills/canvas). One canvas serves both environments.
+  const canvasUrl = 'https://canvas.agent.cloud/mcp';
   // Installs follow this branch, never a version tag, so marketplace updates reach each new release.
   const variables = { version, protocolVersion, environment, origin, marketplaceName, channel: 'stable', repository: config.repository, repositorySlug: config.repository.replace('https://github.com/', ''), displayName: config.plugin.displayName, stagingFlag: environment === 'staging' ? ' --staging' : '' };
   const render = path => Buffer.from(read(path).toString().replace(/\{\{([A-Za-z]+)\}\}/g, (_match, key) => {
@@ -84,14 +86,14 @@ export function buildPackage({ environment = 'production', out, sourceRoot = pac
     } } })],
     // M0-qualified protected-resource discovery/DCR; the portable 1.0.0 server
     // schema rejects inline auth extensions. No credentials are bundled.
-    ['mcp.json', json({ $schema: 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json', mcpServers: { [serverName]: { type: 'streamable-http', url: `${origin}/mcp` } } })],
+    ['mcp.json', json({ $schema: 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json', mcpServers: { [serverName]: { type: 'streamable-http', url: `${origin}/mcp` }, canvas: { type: 'streamable-http', url: canvasUrl } } })],
   ]);
   const claude = new Map([
     ['.claude-plugin/plugin.json', json({ ...identity, displayName: config.plugin.displayName,
       ...Object.fromEntries(['supportURL', 'documentationURL', 'privacyPolicyURL', 'termsOfServiceURL'].filter(key => config.plugin[key]).map(key => [key.replace('URL', 'Url'), config.plugin[key]])),
       ...(icon ? { icon: `./${icon.path}` } : {}),
     })],
-    ['.mcp.json', json({ mcpServers: { [serverName]: { type: 'http', url: `${origin}/mcp` } } })],
+    ['.mcp.json', json({ mcpServers: { [serverName]: { type: 'http', url: `${origin}/mcp` }, canvas: { type: 'http', url: canvasUrl } } })],
   ]);
   const bundle = (files, artifactTarget) => {
     const result = new Map(files);

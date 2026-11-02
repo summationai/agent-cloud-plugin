@@ -51,7 +51,7 @@ test('PLG-1, PLG-29, PLG-30: one public repository and both submission ZIPs run 
     const target = zip.endsWith('openai.zip') ? 'openai' : 'claude', folder = join(dir, `extracted-${target}`);
     const files = extract(zip, folder, target);
     assert.equal(validateTarget(readArtifactDirectory(folder), target).valid, true);
-    for (const path of ['skills/setup/SKILL.md', 'skills/build-and-host/SKILL.md', 'skills/manage-app/SKILL.md', 'scripts/connect-codex.mjs', 'README.md', 'CLIENTS.md', 'ACCEPTANCE.md', 'references/starters.json']) assert.deepEqual(files.get(path), combined.get(path), path);
+    for (const path of ['skills/setup/SKILL.md', 'skills/build-and-host/SKILL.md', 'skills/manage-app/SKILL.md', 'skills/canvas/SKILL.md', 'agents/canvas-builder.md', 'scripts/connect-codex.mjs', 'README.md', 'CLIENTS.md', 'ACCEPTANCE.md', 'references/starters.json']) assert.deepEqual(files.get(path), combined.get(path), path);
     const result = spawnSync(process.execPath, [join(folder, 'scripts/connect-codex.mjs'), '--help'], { cwd: folder, encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr); assert.match(result.stdout, /Connect the installed/);
   }
@@ -76,7 +76,7 @@ test('PLG-29, PLG-30: release metadata/licensing is configurable and unresolved 
   const files = readArtifactZip(readFileSync(built.submissions[0]));
   const manifest = JSON.parse(files.get('.claude-plugin/plugin.json')!.toString());
   assert.equal(manifest.repository, config.repository); assert.equal(manifest.license, config.license.id);
-  assert.deepEqual(Object.keys(JSON.parse(files.get('.mcp.json')!.toString()).mcpServers), ['agent-cloud']);
+  assert.deepEqual(Object.keys(JSON.parse(files.get('.mcp.json')!.toString()).mcpServers), ['agent-cloud', 'canvas']);
   const catalog = JSON.parse(readFileSync(join(built.repository, '.claude-plugin/marketplace.json'), 'utf8'));
   assert.equal(catalog.name, 'public-example');
   assert.equal(manifest.privacyPolicyUrl, config.plugin.privacyPolicyURL); assert.equal(manifest.icon, './assets/icon.png');
