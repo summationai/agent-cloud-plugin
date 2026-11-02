@@ -124,13 +124,9 @@ export function buildPackage({ environment = 'production', out, sourceRoot = pac
     ...(!icon ? ['Configure a reviewed listing icon.'] : []),
     ...(environment !== 'production' ? ['Public release-ready builds must target production.'] : []),
   ];
-  const review = config.openai.review;
-  const openaiGaps = [
-    ...(!review?.demo_recording_url ? ['Supply the reviewer-accessible demo recording URL.'] : []),
-    ...mcpReviewGaps(mcpServers),
-  ];
+  const openaiGaps = mcpReviewGaps(mcpServers);
   const readiness = Object.fromEntries(targetNames.map(name => [name, [...commonGaps, ...(name === 'openai' ? openaiGaps : [])]]));
-  const report = { version, environment, repository: config.repository, generated: true, validation: validations, submission_metadata_gaps: readiness, publication: { performed_by_build: false, source_repository: 'not_checked', submission: 'not_checked', listing: 'not_checked' }, note: 'Structural validation does not establish live-client acceptance, licensing approval, URL accessibility, provider review or publication.' };
+  const report = { version, environment, repository: config.repository, generated: true, validation: validations, submission_metadata_gaps: readiness, publication: { performed_by_build: false, source_repository: 'not_checked', submission: 'not_checked', listing: 'not_checked' }, note: 'The demo recording URL and reviewer access are supplied directly in the OpenAI submission portal and are not checked or bundled by this build. Structural validation does not establish live-client acceptance, licensing approval, URL accessibility, provider review or publication.' };
   if (release && Object.values(readiness).some(gaps => gaps.length)) throw Error(`Release configuration is incomplete: ${JSON.stringify(readiness)}`);
   const repository = new Map();
   for (const [path, bytes] of combined) repository.set(`plugins/${name}/${path}`, bytes);

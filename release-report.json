@@ -30,9 +30,7 @@
     }
   ],
   "submission_metadata_gaps": {
-    "openai": [
-      "Supply the reviewer-accessible demo recording URL."
-    ],
+    "openai": [],
     "claude": []
   },
   "publication": {
@@ -41,5 +39,5 @@
     "submission": "not_checked",
     "listing": "not_checked"
   },
-  "note": "Structural validation does not establish live-client acceptance, licensing approval, URL accessibility, provider review or publication."
+  "note": "The demo recording URL and reviewer access are supplied directly in the OpenAI submission portal and are not checked or bundled by this build. Structural validation does not establish live-client acceptance, licensing approval, URL accessibility, provider review or publication."
 }

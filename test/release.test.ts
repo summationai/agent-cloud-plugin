@@ -88,13 +88,13 @@ test('PLG-29, PLG-30: release metadata/licensing is configurable and unresolved 
   assert.deepEqual(report.submission_metadata_gaps.claude, []); assert.equal(report.publication.performed_by_build, false); assert.equal(report.publication.source_repository, 'not_checked');
   assert.throws(() => buildPackage({ configPath, target: 'openai', release: true, out: join(dir, 'missing-review') }), /review cases/);
   for (const review of [
-    { demo_recording_url: true, test_cases: { positive: 'abcde', negative: 'abc' } },
-    { demo_recording_url: 'http://example.com/demo' },
+    { commerce: 'true' },
+    { commerce_description: false },
   ]) {
     writeFileSync(configPath, JSON.stringify({ ...config, openai: { review } }));
-    assert.throws(() => buildPackage({ configPath, target: 'openai', release: true, out: join(dir, 'invalid-review') }), /Invalid release configuration|HTTPS/);
+    assert.throws(() => buildPackage({ configPath, target: 'openai', release: true, out: join(dir, 'invalid-review') }), /Invalid release configuration/);
   }
-  const review = { demo_recording_url: 'https://example.com/demo?v=1' };
+  const review = { commerce: false };
   const serverReview = { test_cases: {
     positive: Array.from({ length: 5 }, (_, index) => ({ description: `Synthetic read ${index}`, prompt: 'Show app status.', tools_triggered: 'app_get', expected_behavior: 'Return the authorized app status.' })),
     negative: Array.from({ length: 3 }, (_, index) => ({ description: `Synthetic refusal ${index}`, prompt: 'Access an unauthorized app.' })),
@@ -154,10 +154,42 @@ test('PLG-30: both MCP servers carry independent review cases in the OpenAI ZIP,
   }
 });
 
+test('PLG-30: release-ready packages and public source omit the portal-only demo recording URL', t => {
+  const dir = temporary(t), built = buildPackage({ release: true, out: join(dir, 'release') });
+  const check = (value: any, path: string) => {
+    if (!value || typeof value !== 'object') return;
+    assert.equal(Object.hasOwn(value, 'demo_recording_url'), false, path);
+    for (const [key, child] of Object.entries(value)) check(child, `${path}/${key}`);
+  };
+  const publicFiles = readArtifactDirectory(built.repository);
+  for (const [path, bytes] of publicFiles) if (path.endsWith('.json')) check(JSON.parse(bytes.toString()), path);
+  for (const zip of built.submissions) {
+    for (const [path, bytes] of readArtifactZip(readFileSync(zip))) if (path.endsWith('.json')) check(JSON.parse(bytes.toString()), `${zip}/${path}`);
+  }
+  assert.deepEqual(JSON.parse(readFileSync(built.report, 'utf8')).submission_metadata_gaps, { openai: [], claude: [] });
+});
+
+test('PLG-30: recording URLs are rejected from public configuration and package metadata without echoing their value', t => {
+  const dir = temporary(t), configPath = join(dir, 'release.json');
+  const recording = new URL('review-recording', 'https://example.invalid/').href;
+  writeFileSync(configPath, JSON.stringify({ openai: { review: { demo_recording_url: recording } } }));
+  assert.throws(() => buildPackage({ configPath, out: join(dir, 'private-recording') }), (error: Error) => {
+    assert.match(error.message, /OpenAI submission portal/);
+    assert.equal(error.message.includes(recording), false);
+    return true;
+  });
+  const built = buildPackage({ out: join(dir, 'build'), target: 'openai' });
+  const files = readArtifactZip(readFileSync(built.submissions[0]));
+  const plugin = JSON.parse(files.get('plugin.json')!.toString());
+  plugin.extensions['com.openai'].review.demo_recording_url = recording;
+  files.set('plugin.json', Buffer.from(JSON.stringify(plugin)));
+  assert.throws(() => validateTarget(files, 'openai'), /OpenAI submission portal/);
+});
+
 test('PLG-30: release readiness names either server whose cases are missing or incomplete', t => {
   const dir = temporary(t), configPath = join(dir, 'release.json');
   for (const name of ['agent-cloud', 'canvas']) {
-    writeFileSync(configPath, JSON.stringify({ openai: { review: { demo_recording_url: 'https://example.com/review-demo' }, mcpServers: { [name]: null } } }));
+    writeFileSync(configPath, JSON.stringify({ openai: { mcpServers: { [name]: null } } }));
     const built = buildPackage({ configPath, target: 'openai', out: join(dir, name) });
     assert.deepEqual(JSON.parse(readFileSync(built.report, 'utf8')).submission_metadata_gaps.openai,
       [`Supply exactly five positive and three negative MCP review cases for ${name}.`]);
@@ -165,7 +197,7 @@ test('PLG-30: release readiness names either server whose cases are missing or i
   }
   const config = JSON.parse(readFileSync(new URL('../release.config.json', import.meta.url), 'utf8'));
   const canvasCases = config.openai.mcpServers.canvas.test_cases;
-  writeFileSync(configPath, JSON.stringify({ openai: { review: { demo_recording_url: 'https://example.com/review-demo' }, mcpServers: { canvas: { test_cases: { positive: canvasCases.positive.slice(1) } } } } }));
+  writeFileSync(configPath, JSON.stringify({ openai: { mcpServers: { canvas: { test_cases: { positive: canvasCases.positive.slice(1) } } } } }));
   assert.throws(() => buildPackage({ configPath, release: true, target: 'openai', out: join(dir, 'short-canvas') }), /review cases for canvas/);
 });
 

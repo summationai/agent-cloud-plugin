@@ -12,7 +12,7 @@ const testCasesSchema = { type: 'object', additionalProperties: false, propertie
   negative: { type: 'array', maxItems: 3, items: { type: 'object', additionalProperties: false, required: ['description', 'prompt'], properties: caseProperties } },
 } };
 const reviewSchema = { type: 'object', additionalProperties: false, properties: {
-  demo_recording_url: text, commerce: { type: 'boolean' }, commerce_description: text,
+  commerce: { type: 'boolean' }, commerce_description: text,
 } };
 const serverReviewSchema = { type: 'object', additionalProperties: false, properties: { test_cases: testCasesSchema } };
 const nullableServerReview = { anyOf: [serverReviewSchema, { type: 'null' }] };
@@ -39,11 +39,15 @@ function publicUrls(values) {
     if (url.protocol !== 'https:' || url.username || url.password) throw Error('Public metadata URLs must be HTTPS without embedded credentials.');
   }
 }
+function rejectRecordingUrl(review) {
+  if (review && Object.hasOwn(review, 'demo_recording_url')) throw Error('Enter the demo recording URL directly in the OpenAI submission portal; it must not be included in public release configuration or package metadata.');
+}
 
 // The portable 1.0.0 transport schema has no server extensions. Validate the OpenAI
 // submission extension separately, then validate a transport-only copy against
 // that unchanged upstream schema.
 export function portableMcpConfig(mcp, review) {
+  rejectRecordingUrl(review);
   if (review?.test_cases !== undefined) throw Error('Declare MCP review cases per server, not in plugin-level review.test_cases.');
   return { ...mcp, mcpServers: Object.fromEntries(Object.entries(mcp.mcpServers ?? {}).map(([name, server]) => {
     const { extensions, ...transport } = server;
@@ -80,9 +84,10 @@ export function loadReleaseConfig(sourceRoot, overridePath) {
   const configRoot = overridePath ? realpathSync(dirname(resolve(overridePath))) : sourceRoot;
   const overrides = overridePath ? JSON.parse(selectedFile(resolve(configRoot, basename(overridePath))).toString()) : {};
   const config = merge(defaults, overrides);
+  rejectRecordingUrl(config.openai?.review);
   if (!validate(config)) throw Error(`Invalid release configuration: ${JSON.stringify(validate.errors)}`);
   if (config.repository.replace(/\.git$/, '') === 'https://github.com/summationai/agent-cloud') throw Error('Distribution must use a dedicated public repository.');
-  publicUrls([config.plugin.homepage, ...['supportURL', 'documentationURL', 'privacyPolicyURL', 'termsOfServiceURL'].map(key => config.plugin[key]), config.marketplace.owner.url, config.plugin.author.url, config.openai.review?.demo_recording_url, ...Object.values(config.openai.mcpServers ?? {}).flatMap(caseUrls)]);
+  publicUrls([config.plugin.homepage, ...['supportURL', 'documentationURL', 'privacyPolicyURL', 'termsOfServiceURL'].map(key => config.plugin[key]), config.marketplace.owner.url, config.plugin.author.url, ...Object.values(config.openai.mcpServers ?? {}).flatMap(caseUrls)]);
   function rejectCredentials(value) {
     if (!value || typeof value !== 'object') return;
     for (const [key, child] of Object.entries(value)) {
