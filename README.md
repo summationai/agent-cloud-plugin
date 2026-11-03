@@ -2,7 +2,7 @@
 
 Connect your account, propose a useful first app, build with your coding assistant, and manage existing agent.cloud apps. This release uses remote MCP for management and `agc` for managed local development and default publishing. The bundled uploader and persistent preference profiles are not available yet.
 
-This package contains its manifests, three skills, all referenced instructions and starter metadata, and readable `scripts/connect-codex.mjs` source. Installation and use require no access to the agent.cloud source repository. Public APIs and the public pinned starter download still require network access. Read [CLIENTS.md](plugins/agent-cloud/CLIENTS.md) for measured capabilities and remaining acceptance gates, [ACCEPTANCE.md](plugins/agent-cloud/ACCEPTANCE.md) for setup cases, and [LICENSE-STATUS.md](LICENSE-STATUS.md) for configured licensing.
+This package contains its manifests, four skills, the canvas-builder agent, all referenced instructions and starter metadata, and readable `scripts/connect-codex.mjs` source. Installation and use require no access to the agent.cloud source repository. Public APIs and the public pinned starter download still require network access. Read [CLIENTS.md](plugins/agent-cloud/CLIENTS.md) for measured capabilities and remaining acceptance gates, [ACCEPTANCE.md](plugins/agent-cloud/ACCEPTANCE.md) for setup cases, and [LICENSE-STATUS.md](LICENSE-STATUS.md) for configured licensing.
 
 ## Install
 
