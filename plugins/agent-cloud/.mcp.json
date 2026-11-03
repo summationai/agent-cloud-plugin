@@ -6,7 +6,7 @@
     },
     "canvas": {
       "type": "http",
-      "url": "https://canvas.agent.cloud/mcp"
+      "url": "https://canvas-e2e.agent.cloud/mcp"
     }
   }
 }

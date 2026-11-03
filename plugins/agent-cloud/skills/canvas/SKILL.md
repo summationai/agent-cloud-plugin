@@ -1,12 +1,42 @@
 ---
 name: canvas
 description: >-
-  Build the cards waiting on the person's agent.cloud canvas, and make the card
-  they picked a real agent.cloud app. Use when they ask to build their canvas or
-  its cards, or to make their canvas pick real.
+  Build an app with the person on their agent.cloud canvas: start one from their
+  idea, try versions that differ on purpose, ask them at the forks that matter,
+  and build the cards waiting on it; and make the card they picked a real
+  agent.cloud app. Use when they bring an app idea or a change to one, ask to
+  build their canvas or its cards, or ask to make their canvas pick real.
 ---
 
 The canvas (its tools are waiting_cards, next_card, write_files, finish and picked_card) shows a few takes on one idea; the person picks one and makes it real. The cards are built by you, on the person's own plan; the canvas never calls a model for them.
+
+## Drive the canvas
+
+The canvas is where you and the person build an app together. They see your cards and questions live at the canvas link; you see the canvas with read_canvas.
+
+When they bring an app idea, or a change to one, you drive the canvas: you choose the path, and they decide at the forks that matter.
+
+The end state: a live app they chose at every fork that mattered, every critical decision theirs, every other decision recorded with its reason on its card, using as little of their time as possible.
+
+Start with start_canvas (or read_canvas for a canvas they have) and give them the link. Then write your goal (write_note, kind goal: what you will end with, which forks you will ask them about, roughly how long) and ask them to agree it (ask, critical true).
+
+Then choose the play that fits the problem. These are examples, not a menu:
+- A landing page or a small app: three variations that differ in look; ask; they pick.
+- A change to a card they have: one riff on that card.
+- A big app: a plan note (its parts), then riff the first fork that matters, ask, build on their pick, then the next fork.
+- An idea they are unsure about: three variations that differ in approach, then go on from their pick.
+
+Riffs: name one axis (approach, look, voice or scope) and hold everything else the same, so they compare one thing; at most three takes, each with a one-line reason they read on its card. A first round from a blank brief may differ in both approach and look.
+
+Ask where taste decides and the options look different: the overall direction, the main screen's layout, tone and brand, the core flow. Decide yourself where it is invisible or conventional: the data model, routes, validation, empty and loading states; accessibility is never optional. One open question at a time, 2 or 3 options, always your recommendation and why.
+
+Critical decisions wait for the person (ask with critical true): the goal; anything hard to undo (publishing, deleting, sending anything to people); money; people's data or sign-in; connecting a real data source or secret; importing data; a change of direction that throws away work they picked. For anything else, if they do not answer, your recommendation stands, marked as decided for them, and you keep going.
+
+See your own work: render a card before you ask about it, and fix what looks wrong first. Read the canvas again before each decision: people comment, switch picks and move things.
+
+Restraint: a canvas with 40 cards is noise. Make few, distinct cards, each answering a question.
+
+When they have the version they want, they choose Pick this one on it, and you make it real when they ask (picked_card).
 
 ## Build the canvas
 

@@ -37,7 +37,7 @@ export function buildPackage({ environment = 'production', out, sourceRoot = pac
   const name = 'agent-cloud', marketplaceName = config.marketplace.name + (environment === 'staging' ? '-staging' : '');
   const serverName = environment === 'staging' ? 'agent-cloud-staging' : 'agent-cloud';
   // The canvas: a few takes on an idea, built by the person's own agent (skills/canvas). One canvas serves both environments.
-  const canvasUrl = 'https://canvas.agent.cloud/mcp';
+  const canvasUrl = 'https://canvas-e2e.agent.cloud/mcp';
   // Installs follow this branch, never a version tag, so marketplace updates reach each new release.
   const variables = { version, environment, origin, marketplaceName, channel: 'stable', repository: config.repository, repositorySlug: config.repository.replace('https://github.com/', ''), displayName: config.plugin.displayName, stagingFlag: environment === 'staging' ? ' --staging' : '' };
   const render = path => Buffer.from(read(path).toString().replace(/\{\{([A-Za-z]+)\}\}/g, (_match, key) => {
