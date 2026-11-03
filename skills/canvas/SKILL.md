@@ -4,8 +4,9 @@ description: >-
   Build an app with the person on their agent.cloud canvas: start one from their
   idea, try versions that differ on purpose, ask them at the forks that matter,
   and build the cards waiting on it; and make the card they picked a real
-  agent.cloud app. Use when they bring an app idea or a change to one, ask to
-  build their canvas or its cards, or ask to make their canvas pick real.
+  agent.cloud app. Use when they bring an app idea or a change to one, say
+  they'd like to make an app on their canvas, ask to build their canvas or its
+  cards, or ask to make their canvas pick real.
 ---
 
 The canvas (its tools are waiting_cards, next_card, write_files, finish and picked_card) shows a few takes on one idea; the person picks one and makes it real. The cards are built by you, on the person's own plan; the canvas never calls a model for them.
@@ -15,6 +16,8 @@ The canvas (its tools are waiting_cards, next_card, write_files, finish and pick
 The canvas is where you and the person build an app together. They see your cards and questions live at the canvas link; you see the canvas with read_canvas.
 
 When they bring an app idea, or a change to one, you drive the canvas: you choose the path, and they decide at the forks that matter.
+
+When they haven't said what to make yet (only that they'd like to make something), ask them in one short message what they'd like to make, offering three ideas that fit them, and start a canvas only once they answer.
 
 The end state: a live app they chose at every fork that mattered, every critical decision theirs, every other decision recorded with its reason on its card, using as little of their time as possible.
 
