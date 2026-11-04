@@ -30,12 +30,12 @@ git status --short
 git diff --check
 git add .
 git diff --cached --stat
-git commit -m "Release agent.cloud 0.3.3"
-git tag v0.3.3
+git commit -m "Release agent.cloud 0.3.4"
+git tag v0.3.4
 git push origin HEAD
-git push origin v0.3.3
-git push origin 'v0.3.3^{commit}:refs/heads/stable'
-gh release create v0.3.3 --repo summationai/agent-cloud-plugin --verify-tag --title "agent.cloud 0.3.3" dist/production/submissions/*.zip dist/production/SHA256SUMS
+git push origin v0.3.4
+git push origin 'v0.3.4^{commit}:refs/heads/stable'
+gh release create v0.3.4 --repo summationai/agent-cloud-plugin --verify-tag --title "agent.cloud 0.3.4" dist/production/submissions/*.zip dist/production/SHA256SUMS
 ```
 
 Review the staged file list for credentials or unintended local files before committing. `.gitignore` excludes dependency/build directories and environment files. Never move a released tag; publish a new version. Installs follow the `stable` branch, so moving it to the new tag is the step that ships the release: `claude plugin marketplace update` and auto-update read it, and the plugin version must increase for clients to see an update. Move `stable` only to a released tag, never commit to it directly, and protect it on GitHub so only release owners can push. `main` may carry unreleased work. Before advertising Git installation, install from the actual public URL/ref in clean Claude and Codex profiles and repeat the acceptance cases. Local-path success does not establish public transport or directory acceptance.
@@ -111,12 +111,12 @@ The whole workflow is then rehearsed end to end on a scratch repository before i
 
 ## Submit each provider artifact
 
-**OpenAI:** upload `dist/production/submissions/agent-cloud-0.3.3-production-openai.zip`. Its root contains portable `plugin.json`, `mcp.json`, skills and every runtime resource. Use the verified publishing identity and [plugin submission dashboard](https://developers.openai.com/plugins/deploy/submission). Include the remote HTTPS MCP configuration in the initial ZIP, complete domain/authentication/tool scans, and supply review materials. Enter reviewer credentials only in the secure dashboard. Follow the applicable review route for desktop helper execution; remote-MCP review does not establish every local capability.
+**OpenAI:** upload `dist/production/submissions/agent-cloud-0.3.4-production-openai.zip`. Its root contains portable `plugin.json`, `mcp.json`, skills and every runtime resource. Use the verified publishing identity and [plugin submission dashboard](https://developers.openai.com/plugins/deploy/submission). Include the remote HTTPS MCP configuration in the initial ZIP, complete domain/authentication/tool scans, and supply review materials. Enter reviewer credentials only in the secure dashboard. Follow the applicable review route for desktop helper execution; remote-MCP review does not establish every local capability.
 
 Both MCP servers have their own review cases: edit `openai.mcpServers.agent-cloud.test_cases` and `openai.mcpServers.canvas.test_cases` in `release.config.json`. The build places each set in that server's `extensions.com.openai.review.test_cases` in `mcp.json`; plugin-level `review.test_cases` is not used with multiple servers. Release-ready output requires five positive and three negative cases for each server, and reports the server by name when its cases are incomplete. Run all sixteen cases with the reviewer account before submission. The portable transport schema remains pinned; OpenAI server review extensions are validated separately. The current submission portal connects one server per plugin, even though the package declares both; confirm the intended directory connection in the portal.
 
 Enter the reviewer-accessible demo recording URL directly in the OpenAI submission portal under **Metadata & Skills → Review information → Review details**. Keep it out of `release.config.json`, configuration overrides, the public repository and submission ZIPs; the build rejects `demo_recording_url` in release configuration and plugin review metadata. Omit that field entirely so a package upload preserves the URL saved in the portal; an empty string would clear the saved value. Reviewer credentials and sign-in instructions also belong only in the secure dashboard. The `--release` gate checks package requirements without requiring or verifying the portal-only recording. Supply and verify the recording in the portal before submitting for MCP review. See [OpenAI's submission guide](https://developers.openai.com/plugins/deploy/submission).
 
-**Claude:** use `dist/production/submissions/agent-cloud-0.3.3-production-claude.zip`. Its root contains `.claude-plugin/plugin.json`, `.mcp.json`, skills and all runtime resources. Extract it and run `claude plugin validate <extracted-plugin> --strict`, plus directory-profile checks when preparing that submission. The repository's `.claude-plugin/marketplace.json` is the own-marketplace route; [Anthropic directory submission](https://claude.ai/directory/manage) and official-marketplace placement are separate. Follow [publishing guidance](https://code.claude.com/docs/en/plugins/publish) and current portal upload requirements.
+**Claude:** use `dist/production/submissions/agent-cloud-0.3.4-production-claude.zip`. Its root contains `.claude-plugin/plugin.json`, `.mcp.json`, skills and all runtime resources. Extract it and run `claude plugin validate <extracted-plugin> --strict`, plus directory-profile checks when preparing that submission. The repository's `.claude-plugin/marketplace.json` is the own-marketplace route; [Anthropic directory submission](https://claude.ai/directory/manage) and official-marketplace placement are separate. Follow [publishing guidance](https://code.claude.com/docs/en/plugins/publish) and current portal upload requirements.
 
 `dist/production/release-report.json` distinguishes structural validation from unresolved metadata. Source publication, uploaded/submitted, approved/listed and published package states are recorded separately. Source repository availability alone is not provider approval or a successful connected Setup/publishing journey.
