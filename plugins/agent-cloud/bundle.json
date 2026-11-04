@@ -1,6 +1,6 @@
 {
   "name": "agent-cloud",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "environment": "production",
   "target": "combined",
   "repository": "https://github.com/summationai/agent-cloud-plugin",
@@ -15,7 +15,7 @@
   },
   "files": {
     ".claude-plugin/plugin.json": {
-      "sha256": "e0f8c02795de8bb568f2afa1ca34e482bb6dda05a069856c36d980d65adcbb7e",
+      "sha256": "5037d3dcca4f088fcf906e79387686bc05e48082af6d41bcca5efa0172a64ce8",
       "bytes": 1012
     },
     ".mcp.json": {
@@ -39,7 +39,7 @@
       "bytes": 98
     },
     "README.md": {
-      "sha256": "fcdfc6f219862fef9dbdd5e06204042aaa75edfb2b7bc0a6ec588b200808e7d9",
+      "sha256": "afef71dcdffc4e09a099a889f6ad9916fe311ca88e71d1c0a2e23d5fe4fe0c6c",
       "bytes": 6576
     },
     "agents/canvas-builder.md": {
@@ -55,7 +55,7 @@
       "bytes": 11495
     },
     "plugin.json": {
-      "sha256": "86ba320642436a755ac69c03f91aac146aa984f23cfdf055f94074b7e94d4d1d",
+      "sha256": "7d70416a909d4969907733a8890626e09e0361ae6b03ebc34c95f7b44f280f51",
       "bytes": 1786
     },
     "references/connection.md": {
@@ -71,7 +71,7 @@
       "bytes": 5800
     },
     "references/starters.json": {
-      "sha256": "12ce36ceac2abe7191f48db74fbecedea45ce8c3053482184d6a64d39dd72d3b",
+      "sha256": "e8e8207e800920c710e1642bebc7cfa2e6415344f63e2921fe88df775db01d10",
       "bytes": 384
     },
     "references/why-agent-cloud.md": {
@@ -83,7 +83,7 @@
       "bytes": 4163
     },
     "skills/build-and-host/SKILL.md": {
-      "sha256": "89bfc1068b5270a7fc6c42870509bf186b0d379b6ce95ad0c467d91522aedafb",
+      "sha256": "25304967dfbf1842bfc316734612851218e1c93d3e8f2021c4053837b660c84f",
       "bytes": 16662
     },
     "skills/canvas/SKILL.md": {
