@@ -1,11 +1,11 @@
 {
-  "version": "v1.2.16",
-  "commit": "2f2ad1bee32ec2eab649f987b66b2839172d6660",
-  "sha256": "027dec7c9b57d7a0f3bf662dd1416a9e22a021c945cc60199072cc0ac7a4b532",
+  "version": "v1.2.17",
+  "commit": "e983ee2b2a8d9a6a5ead3d81573eabefb0f86351",
+  "sha256": "e2e4ea2da5edd6367c63ac71d1abaf4e36bd9ca57c38e808da45575e5ff99962",
   "stacks": [
     "typescript",
     "python"
   ],
   "repository": "https://github.com/summationai/agc-starters",
-  "archive_url": "https://github.com/summationai/agc-starters/releases/download/v1.2.16/starters-v1.2.16.tgz"
+  "archive_url": "https://github.com/summationai/agc-starters/releases/download/v1.2.17/starters-v1.2.17.tgz"
 }
