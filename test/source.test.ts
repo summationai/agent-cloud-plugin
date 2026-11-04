@@ -43,3 +43,14 @@ test('PLG-29: public source changes rebuild and sync the generated tree while pr
   assert.equal(readFileSync(join(root, '.git/config'), 'utf8'), 'preserve this Git metadata');
   assert.equal(readFileSync(join(root, 'maintainer-notes.txt'), 'utf8'), 'preserve this local file');
 });
+
+test('BOFF-3: no skill offers turning the builder off; the build skill says app_builder_set takes enabled: true only and sends the person to the console switch', () => {
+  const root = resolve(dirname(new URL(import.meta.url).pathname), '..');
+  for (const name of ['setup', 'build-and-host', 'manage-app', 'canvas']) {
+    const text = readFileSync(join(root, 'skills', name, 'SKILL.md'), 'utf8');
+    assert.doesNotMatch(text, /enabled:\s*false|switching this app to local control/, `${name} offers no builder off`);
+  }
+  const build = readFileSync(join(root, 'skills/build-and-host/SKILL.md'), 'utf8');
+  assert.match(build, /`app_builder_set` takes `enabled: true` only/);
+  assert.match(build, /in the app's settings in the console \(Builder\)/);
+});
