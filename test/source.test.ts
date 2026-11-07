@@ -44,6 +44,14 @@ test('PLG-29: public source changes rebuild and sync the generated tree while pr
   assert.equal(readFileSync(join(root, 'maintainer-notes.txt'), 'utf8'), 'preserve this local file');
 });
 
+test('ORI-4: the build skill opens with Talking to your person: do it then report, ask only on a decision, three plain lines and a link, tell_person word for word', () => {
+  const root = resolve(dirname(new URL(import.meta.url).pathname), '..');
+  const build = readFileSync(join(root, 'skills/build-and-host/SKILL.md'), 'utf8');
+  const part = build.split('\n## Talking to your person\n')[1]?.split('\n## ')[0] ?? '';
+  for (const s of ['never runs agc or a terminal', 'means do it, then report', 'Ask only when agc returns a decision for a person', 'at most three plain lines', 'then one link', 'no commands, JSON, file paths, PR numbers or build states unless they ask', '`data.tell_person`, post it word for word']) assert.ok(part.includes(s), s);
+  assert.ok(build.indexOf('## Talking to your person') < build.indexOf('Start from the person'), 'before the rest of the skill');
+});
+
 test('BOFF-3: no skill offers turning the builder off; the build skill says app_builder_set takes enabled: true only and sends the person to the console switch', () => {
   const root = resolve(dirname(new URL(import.meta.url).pathname), '..');
   for (const name of ['setup', 'build-and-host', 'manage-app', 'canvas']) {

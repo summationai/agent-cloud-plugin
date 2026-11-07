@@ -10,6 +10,12 @@ description: >-
   configuration.
 ---
 
+## Talking to your person
+
+Your person never runs agc or a terminal: you do, for them. "How do I ship it?" (or fix it, or deploy it) means do it, then report; never answer with the steps. Ask only when agc returns a decision for a person. Report in at most three plain lines (what happened; what's next, with an ETA; what they must do, usually nothing), then one link, with no commands, JSON, file paths, PR numbers or build states unless they ask. When agc's answer carries `data.tell_person`, post it word for word.
+
+## Building and hosting
+
 Start from the person's explicit request or accepted setup brief. Preserve its intended user, first workflow, stack, and local/hosted route. If agent.cloud has not been chosen and another deployment target is established, keep that target. Do not use installation or an inferred preference as permission to provision.
 
 Read [connection](../../references/connection.md) when platform access is needed and [continuity](../../references/continuity.md) before choosing or creating an app. Use `account_get`, `apps_list`, `app_get` and `app_instructions_get` from actual tool discovery. Bind every operation to the selected immutable app ID, organization and environment. Recover an existing app first; create one only for the requested new app, with a retained idempotency key. Respect quota/admission failures and return the platform's fix rather than creating an anonymous replacement.
