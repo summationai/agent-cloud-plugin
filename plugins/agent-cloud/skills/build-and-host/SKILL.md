@@ -62,15 +62,15 @@ No install, update or Setup step rewrites app-owned `AGENTS.md`/`CLAUDE.md`, glo
 
 ```json
 {
-  "version": "v1.2.26",
-  "commit": "79cd07900cd09567465ecf4cb955ef5e3f1339ad",
-  "sha256": "76c49ee360241afef80016c9db449e084561dd12c4066e4845bb778a4a3d5d1a",
+  "version": "v1.2.34",
+  "commit": "a82ccf35f28adfcdbef339c3c9b324fae73e099a",
+  "sha256": "95e0d9dc490ed4f9be9c0cd9a18f665ef0361a03cd49c94bdcbd360b5860eb65",
   "stacks": [
     "typescript",
     "python"
   ],
   "repository": "https://github.com/summationai/agc-starters",
-  "archive_url": "https://github.com/summationai/agc-starters/releases/download/v1.2.26/starters-v1.2.26.tgz"
+  "archive_url": "https://github.com/summationai/agc-starters/releases/download/v1.2.34/starters-v1.2.34.tgz"
 }
 ```
 
