@@ -1,6 +1,6 @@
 # Client capabilities and acceptance
 
-Launch targets are Claude Code and Codex desktop/CLI. This is an initial-development release; production rollout and directory approval remain pending.
+Launch targets are Claude Code and Codex desktop/CLI. The plugin connects to production agent.cloud and installs from this repository's `stable` branch. A listing in the Claude or OpenAI directory is separate from that route.
 
 | Surface | Measured package capability | Remaining gate |
 | --- | --- | --- |
@@ -11,4 +11,4 @@ Launch targets are Claude Code and Codex desktop/CLI. This is an initial-develop
 
 Shared package tests validate portable schemas, skill metadata, complete relative resources, deterministic output, source exclusions and helper behavior. Independent agent-only forward review covered cold setup, developer context, existing-app management, repeated acceptance and a shell-less local request. These checks do not establish real-client conversational acceptance. Use the bundled [acceptance cases](ACCEPTANCE.md) to record the exact client/version/environment, package digest, observed responses and tool calls for each release.
 
-Setup uses relevant current-conversation context and creates no durable profile. CLI-managed mirrors/checks/default publishing need `agc`; ordinary edits/project tests do not replace those checks. This release has no bundled uploader. M1 person/org OAuth acceptance, M2 conversations/desktop, M3 publishing and M4 fallback remain separate gates. Public repository transport and both directory submission routes must also be qualified before advertising them as available.
+Setup uses relevant current-conversation context and creates no durable profile. CLI-managed mirrors/checks/default publishing need `agc`; ordinary edits/project tests do not replace those checks. This release has no bundled uploader. M1 person/org OAuth acceptance, M2 conversations/desktop, M3 publishing and M4 fallback remain separate gates. The public repository is the install route. A directory listing is advertised only after that directory approves it.
