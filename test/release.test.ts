@@ -143,11 +143,20 @@ test('PLG-30: both MCP servers carry independent review cases in the OpenAI ZIP,
     const plugin = JSON.parse(files.get('plugin.json')!.toString());
     assert.equal(plugin.extensions['com.openai'].review?.test_cases, undefined, 'cases cannot be ambiguous at plugin level');
     const servers = JSON.parse(files.get('mcp.json')!.toString()).mcpServers;
+    const installed = readArtifactDirectory(built.plugin);
+    const runtimeMcp = JSON.parse(installed.get('mcp.json')!.toString());
     const hostingName = environment === 'staging' ? 'agent-cloud-staging' : 'agent-cloud';
     for (const [name, source] of [[hostingName, 'agent-cloud'], ['canvas', 'canvas']]) {
       const cases = servers[name].extensions['com.openai'].review.test_cases;
       assert.deepEqual(cases, config.openai.mcpServers[source].test_cases, `${environment}/${name}`);
       assert.equal(cases.positive.length, 5); assert.equal(cases.negative.length, 3);
+      assert.deepEqual(runtimeMcp.mcpServers[name], { type: servers[name].type, url: servers[name].url });
+      // A valid submission extension still breaks the Codex runtime parser.
+      const contaminated = new Map(installed);
+      const contaminatedMcp = structuredClone(runtimeMcp);
+      contaminatedMcp.mcpServers[name] = servers[name];
+      contaminated.set('mcp.json', Buffer.from(JSON.stringify(contaminatedMcp)));
+      assert.throws(() => validateTarget(contaminated, 'combined'), /Invalid portable mcp/);
     }
     const claude = readArtifactZip(readFileSync(built.submissions.find(path => path.endsWith('claude.zip'))!));
     for (const server of Object.values(JSON.parse(claude.get('.mcp.json')!.toString()).mcpServers) as any[]) assert.equal(server.extensions, undefined);

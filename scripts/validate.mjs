@@ -35,7 +35,11 @@ export function validateTarget(files, target) {
   if (target !== 'claude') {
     const manifest = json('plugin.json');
     const extension = manifest.extensions?.['com.openai'];
-    for (const [name, value] of [['plugin', manifest], ['mcp', portableMcpConfig(json('mcp.json'), extension?.review)]]) if (!schemas[name](value)) throw Error(`Invalid portable ${name}: ${JSON.stringify(schemas[name].errors)}`);
+    const mcp = json('mcp.json');
+    // Only portal submissions permit review extensions. Validate installed
+    // bytes directly so metadata stripping cannot hide a runtime parse error.
+    const transport = portableMcpConfig(mcp, extension?.review);
+    for (const [name, value] of [['plugin', manifest], ['mcp', target === 'combined' ? mcp : transport]]) if (!schemas[name](value)) throw Error(`Invalid portable ${name}: ${JSON.stringify(schemas[name].errors)}`);
     resource(extension?.onboardingSkill);
     const listing = extension?.interface;
     for (const [key, max] of [['displayName', 30], ['shortDescription', 30], ['longDescription', 4000], ['developerName', 80]]) if (typeof listing?.[key] !== 'string' || !listing[key].length || listing[key].length > max) throw Error(`Invalid OpenAI listing ${key}.`);

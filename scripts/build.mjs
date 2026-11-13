@@ -5,7 +5,7 @@ import { lstatSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync
 import { dirname, isAbsolute, join, posix, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { zipSync } from 'fflate';
-import { loadReleaseConfig, mcpReviewGaps } from './release-config.mjs';
+import { loadReleaseConfig, mcpReviewGaps, portableMcpConfig } from './release-config.mjs';
 import { readArtifactZip, validateTarget } from './validate.mjs';
 
 const packageRoot = fileURLToPath(new URL('../', import.meta.url));
@@ -108,7 +108,10 @@ export function buildPackage({ environment = 'production', out, sourceRoot = pac
     }));
     return result;
   };
-  const combined = bundle([...shared, ...openai, ...claude], 'combined');
+  // Codex's portable runtime parser rejects per-server extensions. Keep portal
+  // review metadata in the OpenAI submission ZIP, not the Git-installed package.
+  const runtimeMcp = portableMcpConfig(JSON.parse(openai.get('mcp.json').toString()), config.openai.review);
+  const combined = bundle([...shared, ...openai, ...claude, ['mcp.json', json(runtimeMcp)]], 'combined');
   const targetNames = target === 'all' ? ['openai', 'claude'] : [target];
   const archives = new Map(), validations = [validateTarget(combined, 'combined')];
   for (const name of targetNames) {
