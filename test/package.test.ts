@@ -7,7 +7,6 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { buildPackage } from '../scripts/build.mjs';
-import { portableMcpConfig } from '../scripts/release-config.mjs';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import { parse as parseYaml } from 'yaml';
 
@@ -39,7 +38,7 @@ test('PLG-1, PLG-29: both client formats share versioned workflows, complete loc
     const metadata = json(join(built.plugin, 'bundle.json'));
     for (const name of ['plugin', 'mcp']) {
       const value = json(join(built.plugin, `${name}.json`));
-      assert.ok(schemaValidators[name](name === 'mcp' ? portableMcpConfig(value, portable.extensions['com.openai'].review) : value), JSON.stringify(schemaValidators[name].errors));
+      assert.ok(schemaValidators[name](value), JSON.stringify(schemaValidators[name].errors));
     }
     assert.equal(portable.name, 'agent-cloud'); assert.equal(claude.name, portable.name);
     assert.equal(portable.version, json(join(root, 'package.json')).version); assert.equal(claude.version, portable.version);
@@ -56,8 +55,8 @@ test('PLG-1, PLG-29: both client formats share versioned workflows, complete loc
     const origin = environment === 'staging' ? 'https://staging-agent.cloud' : 'https://agent.cloud';
     const name = environment === 'staging' ? 'agent-cloud-staging' : 'agent-cloud';
     assert.deepEqual(json(join(built.plugin, 'mcp.json')).mcpServers, {
-      [name]: { type: 'streamable-http', url: `${origin}/mcp`, extensions: { 'com.openai': { review: releaseConfig.openai.mcpServers['agent-cloud'] } } },
-      canvas: { type: 'streamable-http', url: 'https://canvas.agent.cloud/mcp', extensions: { 'com.openai': { review: releaseConfig.openai.mcpServers.canvas } } },
+      [name]: { type: 'streamable-http', url: `${origin}/mcp` },
+      canvas: { type: 'streamable-http', url: 'https://canvas.agent.cloud/mcp' },
     });
     assert.deepEqual(json(join(built.plugin, '.mcp.json')), { mcpServers: { [name]: { type: 'http', url: `${origin}/mcp` }, canvas: { type: 'http', url: 'https://canvas.agent.cloud/mcp' } } });
     for (const catalog of ['.agents/plugins/marketplace.json', '.claude-plugin/marketplace.json']) {
