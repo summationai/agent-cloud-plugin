@@ -12,10 +12,8 @@ const testCasesSchema = { type: 'object', additionalProperties: false, propertie
   negative: { type: 'array', maxItems: 3, items: { type: 'object', additionalProperties: false, required: ['description', 'prompt'], properties: caseProperties } },
 } };
 const reviewSchema = { type: 'object', additionalProperties: false, properties: {
-  commerce: { type: 'boolean' }, commerce_description: text,
+  commerce: { type: 'boolean' }, commerce_description: text, test_cases: testCasesSchema,
 } };
-const serverReviewSchema = { type: 'object', additionalProperties: false, properties: { test_cases: testCasesSchema } };
-const nullableServerReview = { anyOf: [serverReviewSchema, { type: 'null' }] };
 const schema = {
   type: 'object', additionalProperties: false, required: ['repository', 'marketplace', 'plugin', 'license', 'openai'],
   properties: {
@@ -25,12 +23,11 @@ const schema = {
     license: { type: 'object', additionalProperties: false, required: ['id', 'file'], properties: { id: optionalText, file: optionalText } },
     openai: { type: 'object', additionalProperties: false, required: ['review'], properties: {
       review: { anyOf: [reviewSchema, { type: 'null' }] },
-      mcpServers: { type: 'object', additionalProperties: false, properties: { 'agent-cloud': nullableServerReview, canvas: nullableServerReview } },
     } },
   },
 };
 const validate = new Ajv2020({ strict: true, allErrors: true }).compile(schema);
-const validateServerReview = new Ajv2020({ strict: true, allErrors: true }).compile(serverReviewSchema);
+const validateReview = new Ajv2020({ strict: true, allErrors: true }).compile(reviewSchema);
 const casesIn = review => [...(review?.test_cases?.positive ?? []), ...(review?.test_cases?.negative ?? [])];
 const caseUrls = review => casesIn(review).flatMap(item => [...(item.file_attachment_urls ?? []), item.expected_output_url]);
 function publicUrls(values) {
@@ -43,29 +40,20 @@ function rejectRecordingUrl(review) {
   if (review && Object.hasOwn(review, 'demo_recording_url')) throw Error('Enter the demo recording URL directly in the OpenAI submission portal; it must not be included in public release configuration or package metadata.');
 }
 
-// The portable 1.0.0 transport schema has no server extensions. Validate the OpenAI
-// submission extension separately, then validate a transport-only copy against
-// that unchanged upstream schema.
-export function portableMcpConfig(mcp, review) {
+// OpenAI's portal reads review cases from the root manifest only, and only when the package declares exactly one
+// MCP server: it refuses them on a server in mcp.json. So the submission ZIP carries one server and the cases, and
+// the Git-installed package carries neither the cases nor any server extension.
+export function checkOpenaiReview(review, target, mcp) {
   rejectRecordingUrl(review);
-  if (review?.test_cases !== undefined) throw Error('Declare MCP review cases per server, not in plugin-level review.test_cases.');
-  return { ...mcp, mcpServers: Object.fromEntries(Object.entries(mcp.mcpServers ?? {}).map(([name, server]) => {
-    const { extensions, ...transport } = server;
-    if (extensions !== undefined) {
-      if (!extensions || typeof extensions !== 'object' || Array.isArray(extensions) || Object.keys(extensions).some(key => key !== 'com.openai')) throw Error(`Invalid MCP server extensions: ${name}.`);
-      const openai = extensions['com.openai'];
-      if (!openai || typeof openai !== 'object' || Array.isArray(openai) || Object.keys(openai).some(key => key !== 'review') || !validateServerReview(openai.review)) throw Error(`Invalid OpenAI MCP review metadata: ${name}.`);
-      publicUrls(caseUrls(openai.review));
-    }
-    return [name, transport];
-  })) };
+  if (review !== undefined && !validateReview(review)) throw Error('Invalid OpenAI review metadata.');
+  publicUrls(caseUrls(review));
+  if (target === 'combined' && review?.test_cases !== undefined) throw Error('Review cases belong in the OpenAI submission ZIP only.');
+  if (target === 'openai' && Object.keys(mcp.mcpServers ?? {}).length !== 1) throw Error('The OpenAI submission ZIP declares exactly one MCP server.');
 }
 
-export function mcpReviewGaps(servers) {
-  return Object.entries(servers).flatMap(([name, server]) => {
-    const cases = server.extensions?.['com.openai']?.review?.test_cases;
-    return cases?.positive?.length === 5 && cases?.negative?.length === 3 ? [] : [`Supply exactly five positive and three negative MCP review cases for ${name}.`];
-  });
+export function mcpReviewGaps(review) {
+  const cases = review?.test_cases;
+  return cases?.positive?.length === 5 && cases?.negative?.length === 3 ? [] : ['Supply exactly five positive and three negative MCP review cases.'];
 }
 function merge(base, override) {
   return Object.fromEntries([...new Set([...Object.keys(base), ...Object.keys(override)])].map(key => {
@@ -87,7 +75,7 @@ export function loadReleaseConfig(sourceRoot, overridePath) {
   rejectRecordingUrl(config.openai?.review);
   if (!validate(config)) throw Error(`Invalid release configuration: ${JSON.stringify(validate.errors)}`);
   if (config.repository.replace(/\.git$/, '') === 'https://github.com/summationai/agent-cloud') throw Error('Distribution must use a dedicated public repository.');
-  publicUrls([config.plugin.homepage, ...['supportURL', 'documentationURL', 'privacyPolicyURL', 'termsOfServiceURL'].map(key => config.plugin[key]), config.marketplace.owner.url, config.plugin.author.url, ...Object.values(config.openai.mcpServers ?? {}).flatMap(caseUrls)]);
+  publicUrls([config.plugin.homepage, ...['supportURL', 'documentationURL', 'privacyPolicyURL', 'termsOfServiceURL'].map(key => config.plugin[key]), config.marketplace.owner.url, config.plugin.author.url, ...caseUrls(config.openai.review)]);
   function rejectCredentials(value) {
     if (!value || typeof value !== 'object') return;
     for (const [key, child] of Object.entries(value)) {
