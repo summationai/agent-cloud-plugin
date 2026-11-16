@@ -5,7 +5,7 @@ import { lstatSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync
 import { dirname, isAbsolute, join, posix, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { zipSync } from 'fflate';
-import { loadReleaseConfig, mcpReviewGaps, portableMcpConfig } from './release-config.mjs';
+import { loadReleaseConfig, mcpReviewGaps } from './release-config.mjs';
 import { readArtifactZip, validateTarget } from './validate.mjs';
 
 const packageRoot = fileURLToPath(new URL('../', import.meta.url));
@@ -77,22 +77,23 @@ export function buildPackage({ environment = 'production', out, sourceRoot = pac
     shared.set(path, Buffer.from(`${text.trimEnd()}\n\n## References\n\nThese are this skill's references in full. Use them here instead of opening the plugin's files.\n\n${used.map(file => inlineReference(file, shared.get(`references/${file}`).toString(), `skills/${skill}`)).join('\n\n')}\n`));
   }
   const identity = { name, version, description: config.plugin.description, author: config.plugin.author, homepage: config.plugin.homepage, repository: config.repository, keywords: config.plugin.keywords, ...(config.license.id ? { license: config.license.id } : {}) };
-  const reviewedServer = (url, review) => ({ type: 'streamable-http', url, ...(review ? { extensions: { 'com.openai': { review } } } : {}) });
-  const mcpServers = {
-    [serverName]: reviewedServer(`${origin}/mcp`, config.openai.mcpServers?.['agent-cloud']),
-    canvas: reviewedServer(canvasUrl, config.openai.mcpServers?.canvas),
-  };
-  const openai = new Map([
+  const server = url => ({ type: 'streamable-http', url });
+  // OpenAI's portal connects one MCP server per plugin and reads review cases from the root manifest only when the
+  // package declares exactly one. So the submission ZIP carries agent.cloud's server and the cases, without the canvas
+  // (its skill and agent would have no tools); the Git-installed package keeps both servers and carries no cases.
+  const { test_cases: reviewCases, ...review } = config.openai.review ?? {};
+  const portable = (mcpServers, manifestReview) => new Map([
     ['plugin.json', json({ $schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', ...identity, extensions: { 'com.openai': {
       onboardingSkill: './skills/setup/SKILL.md', interface: { displayName: config.plugin.displayName, shortDescription: config.plugin.shortDescription, longDescription: config.plugin.description, developerName: config.plugin.author.name, category: config.marketplace.category, websiteURL: config.plugin.homepage,
         ...Object.fromEntries(['supportURL', 'privacyPolicyURL', 'termsOfServiceURL'].filter(key => config.plugin[key]).map(key => [key, config.plugin[key]])),
         ...(icon ? { composerIcon: `./${icon.path}`, logo: `./${icon.path}` } : {}),
-      }, ...(config.openai.review ? { review: config.openai.review } : {}),
+      }, ...(config.openai.review ? { review: manifestReview } : {}),
     } } })],
-    // Authentication remains protected-resource discovery/DCR; review cases
-    // belong to each server's OpenAI extension. No credentials are bundled.
+    // Authentication remains protected-resource discovery/DCR. No credentials are bundled.
     ['mcp.json', json({ $schema: 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json', mcpServers })],
   ]);
+  const openai = portable({ [serverName]: server(`${origin}/mcp`) }, { ...review, ...(reviewCases ? { test_cases: reviewCases } : {}) });
+  const installed = portable({ [serverName]: server(`${origin}/mcp`), canvas: server(canvasUrl) }, review);
   const claude = new Map([
     ['.claude-plugin/plugin.json', json({ ...identity, displayName: config.plugin.displayName,
       ...Object.fromEntries(['supportURL', 'documentationURL', 'privacyPolicyURL', 'termsOfServiceURL'].filter(key => config.plugin[key]).map(key => [key.replace('URL', 'Url'), config.plugin[key]])),
@@ -108,14 +109,11 @@ export function buildPackage({ environment = 'production', out, sourceRoot = pac
     }));
     return result;
   };
-  // Codex's portable runtime parser rejects per-server extensions. Keep portal
-  // review metadata in the OpenAI submission ZIP, not the Git-installed package.
-  const runtimeMcp = portableMcpConfig(JSON.parse(openai.get('mcp.json').toString()), config.openai.review);
-  const combined = bundle([...shared, ...openai, ...claude, ['mcp.json', json(runtimeMcp)]], 'combined');
+  const combined = bundle([...shared, ...installed, ...claude], 'combined');
   const targetNames = target === 'all' ? ['openai', 'claude'] : [target];
   const archives = new Map(), validations = [validateTarget(combined, 'combined')];
   for (const name of targetNames) {
-    const files = bundle([...shared, ...(name === 'openai' ? openai : claude)], name);
+    const files = bundle(name === 'openai' ? [...[...shared].filter(([path]) => !/canvas/.test(path)), ...openai] : [...shared, ...claude], name);
     // A fixed ZIP wall-clock timestamp and sorted entries give reproducible bytes.
     const bytes = Buffer.from(zipSync(Object.fromEntries(sorted(files)), { level: 9, mtime: new Date(1980, 0, 1) }));
     validations.push(validateTarget(readArtifactZip(bytes), name));
@@ -127,7 +125,7 @@ export function buildPackage({ environment = 'production', out, sourceRoot = pac
     ...(!icon ? ['Configure a reviewed listing icon.'] : []),
     ...(environment !== 'production' ? ['Public release-ready builds must target production.'] : []),
   ];
-  const openaiGaps = mcpReviewGaps(mcpServers);
+  const openaiGaps = mcpReviewGaps(config.openai.review);
   const readiness = Object.fromEntries(targetNames.map(name => [name, [...commonGaps, ...(name === 'openai' ? openaiGaps : [])]]));
   const report = { version, environment, repository: config.repository, generated: true, validation: validations, submission_metadata_gaps: readiness, publication: { performed_by_build: false, source_repository: 'not_checked', submission: 'not_checked', listing: 'not_checked' }, note: 'The demo recording URL and reviewer access are supplied directly in the OpenAI submission portal and are not checked or bundled by this build. Structural validation does not establish live-client acceptance, licensing approval, URL accessibility, provider review or publication.' };
   if (release && Object.values(readiness).some(gaps => gaps.length)) throw Error(`Release configuration is incomplete: ${JSON.stringify(readiness)}`);

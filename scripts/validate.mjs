@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import { parse as parseYaml } from 'yaml';
 import { unzipSync } from 'fflate';
-import { portableMcpConfig, validateIcon } from './release-config.mjs';
+import { checkOpenaiReview, validateIcon } from './release-config.mjs';
 
 const ajv = new Ajv2020({ strict: true, allErrors: true });
 const schemas = Object.fromEntries(['plugin', 'mcp'].map(name => [name, ajv.compile(JSON.parse(readFileSync(new URL(`../schemas/${name}.schema.json`, import.meta.url), 'utf8')))]));
@@ -36,10 +36,8 @@ export function validateTarget(files, target) {
     const manifest = json('plugin.json');
     const extension = manifest.extensions?.['com.openai'];
     const mcp = json('mcp.json');
-    // Only portal submissions permit review extensions. Validate installed
-    // bytes directly so metadata stripping cannot hide a runtime parse error.
-    const transport = portableMcpConfig(mcp, extension?.review);
-    for (const [name, value] of [['plugin', manifest], ['mcp', target === 'combined' ? mcp : transport]]) if (!schemas[name](value)) throw Error(`Invalid portable ${name}: ${JSON.stringify(schemas[name].errors)}`);
+    checkOpenaiReview(extension?.review, target, mcp);
+    for (const [name, value] of [['plugin', manifest], ['mcp', mcp]]) if (!schemas[name](value)) throw Error(`Invalid portable ${name}: ${JSON.stringify(schemas[name].errors)}`);
     resource(extension?.onboardingSkill);
     const listing = extension?.interface;
     for (const [key, max] of [['displayName', 30], ['shortDescription', 30], ['longDescription', 4000], ['developerName', 80]]) if (typeof listing?.[key] !== 'string' || !listing[key].length || listing[key].length > max) throw Error(`Invalid OpenAI listing ${key}.`);
@@ -53,7 +51,9 @@ export function validateTarget(files, target) {
   }
   if (target === 'openai' && (files.has('.mcp.json') || files.has('.claude-plugin/plugin.json'))) throw Error('OpenAI ZIP contains Claude configuration.');
   if (target === 'claude' && (files.has('mcp.json') || files.has('plugin.json'))) throw Error('Claude ZIP contains portable configuration.');
-  for (const name of ['setup', 'build-and-host', 'manage-app', 'canvas']) {
+  // The OpenAI submission ZIP has no canvas: the portal connects one MCP server, so the canvas skill would have no tools.
+  if (target === 'openai' && [...files.keys()].some(path => /canvas/.test(path))) throw Error('OpenAI ZIP contains the canvas.');
+  for (const name of ['setup', 'build-and-host', 'manage-app', ...(target === 'openai' ? [] : ['canvas'])]) {
     const text = files.get(`skills/${name}/SKILL.md`)?.toString();
     const match = text?.match(/^---\n([\s\S]*?)\n---\n/);
     if (!match) throw Error(`Missing skill metadata: ${name}`);
@@ -75,7 +75,7 @@ export function validateTarget(files, target) {
     // agent.cloud's own server, which must match the bundle, and at most the canvas beside it, over HTTPS.
     const { canvas, ...servers } = json(path).mcpServers;
     if (Object.values(servers).length !== 1 || Object.values(servers)[0].url !== bundle.resource) throw Error('Manifest and bundle environments differ.');
-    if (canvas && !canvas.url?.startsWith('https://')) throw Error('Invalid canvas MCP configuration.');
+    if (canvas && (target === 'openai' || !canvas.url?.startsWith('https://'))) throw Error('Invalid canvas MCP configuration.');
   }
   return { target, valid: true, files: files.size, version: bundle.version, protocol_version: bundle.protocol_version, environment: bundle.environment };
 }
