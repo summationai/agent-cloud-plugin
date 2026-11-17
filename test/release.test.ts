@@ -74,7 +74,7 @@ test('PLG-1, PLG-29, PLG-30: one public repository and both submission ZIPs run 
   assert.equal(JSON.parse(repository.get('.agents/plugins/marketplace.json')!.toString()).plugins[0].source.path, './plugins/agent-cloud');
 });
 
-test('PLG-30: the Claude tree refuses a script and a file that starts with #!', t => {
+test('PLG-30: the Claude tree refuses a script, package-manager configuration, other Claude folders and a file that starts with #!', t => {
   const built = readArtifactDirectory(join(buildPackage({ out: join(temporary(t), 'out') }).repository, 'claude/agent-cloud'));
   assert.equal(validateTarget(built, 'claude').valid, true);
   const rebundled = (files: Map<string, Buffer>) => {
@@ -84,6 +84,8 @@ test('PLG-30: the Claude tree refuses a script and a file that starts with #!', 
   };
   assert.throws(() => validateTarget(rebundled(new Map([...built, ['scripts/connect-codex.mjs', Buffer.from('console.log(1)')]])), 'claude'), /refuses this file type: scripts\/connect-codex\.mjs/);
   assert.throws(() => validateTarget(rebundled(new Map([...built, ['notes.md', Buffer.from('#!/bin/sh\n')]])), 'claude'), /starts with #!/);
+  for (const path of ['package.json', 'package-lock.json', 'skills/setup/pnpm-workspace.yaml', 'references/npm-shrinkwrap.json']) assert.throws(() => validateTarget(rebundled(new Map([...built, [path, Buffer.from('{}\n')]])), 'claude'), /package-manager configuration/, path);
+  for (const path of ['.claude/skills/x/SKILL.md', '.claude-plugin/marketplace.json', 'skills/x/.claude-plugin/plugin.json']) assert.throws(() => validateTarget(rebundled(new Map([...built, [path, Buffer.from('{}\n')]])), 'claude'), /refuses this folder/, path);
 });
 
 test('PLG-29, PLG-30: release metadata/licensing is configurable and unresolved choices block release-ready output', t => {
