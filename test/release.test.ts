@@ -51,12 +51,39 @@ test('PLG-1, PLG-29, PLG-30: one public repository and both submission ZIPs run 
     const target = zip.endsWith('openai.zip') ? 'openai' : 'claude', folder = join(dir, `extracted-${target}`);
     const files = extract(zip, folder, target);
     assert.equal(validateTarget(readArtifactDirectory(folder), target).valid, true);
-    for (const path of ['skills/setup/SKILL.md', 'skills/build-and-host/SKILL.md', 'skills/manage-app/SKILL.md', 'scripts/connect-codex.mjs', 'README.md', 'CLIENTS.md', 'ACCEPTANCE.md', 'references/starters.json']) assert.deepEqual(files.get(path), combined.get(path), path);
+    for (const path of ['CLIENTS.md', 'ACCEPTANCE.md', 'references/starters.json']) assert.deepEqual(files.get(path), combined.get(path), path);
     // The OpenAI portal connects one MCP server, so its ZIP leaves the canvas out; Claude's keeps it.
     for (const path of ['skills/canvas/SKILL.md', 'agents/canvas-builder.md']) assert.deepEqual(files.get(path), target === 'openai' ? undefined : combined.get(path), path);
+    if (target === 'claude') {
+      // The Claude directory refuses scripts from an unverified organization: the ZIP is the committed Claude tree,
+      // which drops Codex's connection helper and the text that runs it.
+      const tree = readArtifactDirectory(join(detached, 'claude/agent-cloud'));
+      assert.deepEqual([...files.keys()].sort(), [...tree.keys()].sort());
+      for (const [path, bytes] of files) assert.deepEqual(bytes, tree.get(path), path);
+      assert.equal(files.has('scripts/connect-codex.mjs'), false);
+      for (const [path, bytes] of files) if (path.endsWith('.md')) assert.doesNotMatch(bytes.toString(), /connect-codex|codex-helper|Codex desktop may have no Connect button/, path);
+      assert.match(files.get('skills/setup/SKILL.md')!.toString(), /In Claude Code, use `\/mcp`/);
+      continue;
+    }
+    for (const path of ['skills/setup/SKILL.md', 'skills/build-and-host/SKILL.md', 'skills/manage-app/SKILL.md', 'scripts/connect-codex.mjs', 'README.md']) assert.deepEqual(files.get(path), combined.get(path), path);
+    for (const [path, bytes] of files) if (path.endsWith('.md')) assert.doesNotMatch(bytes.toString(), /codex-helper/, path);
     const result = spawnSync(process.execPath, [join(folder, 'scripts/connect-codex.mjs'), '--help'], { cwd: folder, encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr); assert.match(result.stdout, /Connect the installed/);
   }
+  assert.equal(JSON.parse(repository.get('.claude-plugin/marketplace.json')!.toString()).plugins[0].source, './claude/agent-cloud');
+  assert.equal(JSON.parse(repository.get('.agents/plugins/marketplace.json')!.toString()).plugins[0].source.path, './plugins/agent-cloud');
+});
+
+test('PLG-30: the Claude tree refuses a script and a file that starts with #!', t => {
+  const built = readArtifactDirectory(join(buildPackage({ out: join(temporary(t), 'out') }).repository, 'claude/agent-cloud'));
+  assert.equal(validateTarget(built, 'claude').valid, true);
+  const rebundled = (files: Map<string, Buffer>) => {
+    const bundle = JSON.parse(files.get('bundle.json')!.toString());
+    bundle.files = Object.fromEntries([...files].filter(([path]) => path !== 'bundle.json').map(([path, bytes]) => [path, { sha256: createHash('sha256').update(bytes).digest('hex'), bytes: bytes.length }]));
+    return new Map([...files, ['bundle.json', Buffer.from(JSON.stringify(bundle))]]);
+  };
+  assert.throws(() => validateTarget(rebundled(new Map([...built, ['scripts/connect-codex.mjs', Buffer.from('console.log(1)')]])), 'claude'), /refuses this file type: scripts\/connect-codex\.mjs/);
+  assert.throws(() => validateTarget(rebundled(new Map([...built, ['notes.md', Buffer.from('#!/bin/sh\n')]])), 'claude'), /starts with #!/);
 });
 
 test('PLG-29, PLG-30: release metadata/licensing is configurable and unresolved choices block release-ready output', t => {

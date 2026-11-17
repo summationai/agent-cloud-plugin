@@ -2,7 +2,7 @@
 
 Connect your account, propose a useful first app, build with your coding assistant, and manage existing agent.cloud apps. This release uses remote MCP for management and `agc` for managed local development and default publishing. The bundled uploader and persistent preference profiles are not available yet.
 
-This package contains its manifests, its skills and agents, all referenced instructions and starter metadata, and readable `scripts/connect-codex.mjs` source. Installation and use require no access to the agent.cloud source repository. Public APIs and the public pinned starter download still require network access. Read [CLIENTS.md](CLIENTS.md) for measured capabilities and remaining acceptance gates, [ACCEPTANCE.md](ACCEPTANCE.md) for setup cases, and [LICENSE-STATUS.md](LICENSE-STATUS.md) for configured licensing.
+This package contains its manifests, its skills and agents, all referenced instructions and starter metadata<!-- codex-helper -->, and readable `scripts/connect-codex.mjs` source<!-- /codex-helper -->. Installation and use require no access to the agent.cloud source repository. Public APIs and the public pinned starter download still require network access. Read [CLIENTS.md](CLIENTS.md) for measured capabilities and remaining acceptance gates, [ACCEPTANCE.md](ACCEPTANCE.md) for setup cases, and [LICENSE-STATUS.md](LICENSE-STATUS.md) for configured licensing.
 
 ## Install
 
@@ -24,12 +24,13 @@ Run the installed plugin's Setup in Codex desktop, or ask Codex CLI to use the `
 
 The `{{channel}}` branch always points at the latest released version tag. Do not add the marketplace at a version tag such as `v{{version}}`: a tag never moves, so later updates find nothing new and the only way forward is to remove and re-add the marketplace.
 
-For a downloaded repository snapshot, use its absolute root instead of `{{repositorySlug}}` in the marketplace-add command. Validate Claude with `claude plugin validate <snapshot>` and `claude plugin validate <snapshot>/plugins/agent-cloud`. A provider submission ZIP contains the plugin itself; extract it to inspect its resources or load it with the client's supported local-package route. ZIPs do not contain the enclosing repository catalogs.
+For a downloaded repository snapshot, use its absolute root instead of `{{repositorySlug}}` in the marketplace-add command. Validate Claude with `claude plugin validate <snapshot>` and `claude plugin validate <snapshot>/claude/agent-cloud`. A provider submission ZIP contains the plugin itself; extract it to inspect its resources or load it with the client's supported local-package route. ZIPs do not contain the enclosing repository catalogs.
 
 ## Connect and use
 
 When platform access is needed, complete browser sign-in, organization selection and consent, then verify the organization returned by `account_get`. Existing admission and app permissions still apply. Production and staging credentials stay separate.
 
+<!-- codex-helper -->
 Codex desktop may have no Connect button. With local execution available, run the installed `scripts/connect-codex.mjs` through Node 24 (24.22.1 or later recommended). Resolve it relative to this README, not a development checkout:
 
 ```text
@@ -37,7 +38,7 @@ node <installed-plugin>/scripts/connect-codex.mjs --check{{stagingFlag}}
 node <installed-plugin>/scripts/connect-codex.mjs{{stagingFlag}}
 ```
 
-Use `--codex /absolute/path/to/codex` to select an installed CLI, including the desktop-bundled one, and `--no-browser` for the supported manual browser flow. The helper uses Node builtins and client-owned OAuth storage; it does not install `agc`. If a fresh chat is needed, preserve the non-secret brief/app references and verify `account_get` there. See [connection guidance](references/connection.md). Never paste credentials or secret values into chat.
+Use `--codex /absolute/path/to/codex` to select an installed CLI, including the desktop-bundled one, and `--no-browser` for the supported manual browser flow. The helper uses Node builtins and client-owned OAuth storage; it does not install `agc`.<!-- /codex-helper --> If a fresh chat is needed, preserve the non-secret brief/app references and verify `account_get` there. See [connection guidance](references/connection.md). Never paste credentials or secret values into chat.
 
 Build-and-host preserves the accepted brief, app identity and chosen local/hosted route. MCP remains available alongside native file edits and `agc`. Local managed mirrors/checks/publishing need a working `agc` and its supported enrollment/linking; ordinary edits/project tests are different. On clients without shell/files, remote management remains possible where qualified. Local upload is unavailable, and hosted work happens only when you choose it. Release decisions require the current person's answer; only an actual live receipt establishes a live release.
 

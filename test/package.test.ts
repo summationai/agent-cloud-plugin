@@ -63,7 +63,8 @@ test('PLG-1, PLG-29: both client formats share versioned workflows, complete loc
       const market = json(join(built.marketplace, catalog));
       assert.equal(market.name, releaseConfig.marketplace.name + (environment === 'staging' ? '-staging' : '')); assert.equal(market.plugins.length, 1);
       const source = market.plugins[0].source;
-      assert.equal(resolve(built.marketplace, typeof source === 'string' ? source : source.path), built.plugin);
+      // Codex installs the tree with its connection helper; Claude installs its own tree without it.
+      assert.equal(resolve(built.marketplace, typeof source === 'string' ? source : source.path), catalog.startsWith('.claude-plugin') ? join(built.marketplace, 'claude/agent-cloud') : built.plugin);
     }
     const contents = files(built.plugin);
     assert.deepEqual(contents, [...Object.keys(metadata.files), 'bundle.json'].sort());

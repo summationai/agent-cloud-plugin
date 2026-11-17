@@ -1,0 +1,9 @@
+# Connect when platform access is needed
+
+The installed MCP server is `agent-cloud` for production (`https://agent.cloud/mcp`) or `agent-cloud-staging` for staging (`https://staging-agent.cloud/mcp`). Credentials and app references stay in their environment. Root/staff deployments are outside this plugin. Use the installed package's environment; do not change endpoints to bypass a failure.
+
+If authenticated tools are available, call `account_get` and verify the current organization, purpose and scopes. Check that this package's protocol version, `2026-10-27`, appears in the account result's supported `protocol_versions` before app operations. On incompatibility, retain the brief/app references and request a compatible package/service update rather than guessing tools or bypassing the check. For missing/expired access, use the client's supported OAuth connection flow. Browser sign-in, invitation/admission, organization selection and consent are required; do not fall back to anonymous CLI app creation. The grant has its own person-backed agent and does not replace a CLI agent.
+
+In Claude Code, use `/mcp` and the installed server's Authenticate flow. Setup invocation is `/agent-cloud:setup`. Do not promise automatic installation-time OAuth. On a surface without local execution, use a supported native connection flow; if unavailable, give the account's `/plugins/connect` URL for connection/recovery information and explain that a qualified local client is needed to complete explicit Codex login. That page alone does not authenticate the active chat.
+
+Read-only management needs only its current allowed purpose/scopes. Do not widen them for setup or ideation. Cancelled consent or denied admission leaves the proposal and existing app intact. Account connection/revocation controls are at the selected origin's `/plugins/connect` page. Tokens and secrets belong in client storage or console entry forms, never chat, argv, files in the app, or logs.

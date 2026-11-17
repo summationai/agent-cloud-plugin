@@ -204,6 +204,8 @@ export function main(argv, root = process.cwd()) {
       'plugins/agent-cloud/plugin.json': read('plugins/agent-cloud/plugin.json').version,
       'plugins/agent-cloud/.claude-plugin/plugin.json': read('plugins/agent-cloud/.claude-plugin/plugin.json').version,
       'plugins/agent-cloud/bundle.json': read('plugins/agent-cloud/bundle.json').version,
+      'claude/agent-cloud/.claude-plugin/plugin.json': read('claude/agent-cloud/.claude-plugin/plugin.json').version,
+      'claude/agent-cloud/bundle.json': read('claude/agent-cloud/bundle.json').version,
     });
     if (plan.action === 'fail' || mismatched.length) throw Error([plan.action === 'fail' ? plan.why : '', ...mismatched].filter(Boolean).join('; '));
     const go = plan.action !== 'skip';

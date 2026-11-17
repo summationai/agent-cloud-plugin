@@ -61,7 +61,14 @@ export function validateTarget(files, target) {
     if (fields.name !== name || typeof fields.description !== 'string' || !fields.description.length) throw Error(`Invalid skill: ${name}`);
   }
   const bundle = json('bundle.json');
-  if (!files.has('README.md') || !files.has('scripts/connect-codex.mjs') || !files.has('references/starters.json')) throw Error('Artifact is not self-contained.');
+  if (!files.has('README.md') || !files.has('references/starters.json')) throw Error('Artifact is not self-contained.');
+  // Codex runs the bundled connection helper. The Claude directory accepts no scripts from an unverified organization,
+  // so the Claude tree holds only Markdown, JSON, the license and images, and no file starts with #!.
+  if (target !== 'claude' && !files.has('scripts/connect-codex.mjs')) throw Error('Artifact is not self-contained.');
+  if (target === 'claude') for (const [path, bytes] of files) {
+    if (!/\.(?:md|txt|json|ya?ml|png|jpe?g|gif|webp|ico)$/.test(path) && path !== 'LICENSE') throw Error(`Claude directory refuses this file type: ${path}`);
+    if (bytes.subarray(0, 2).toString() === '#!') throw Error(`Claude directory refuses a file that starts with #!: ${path}`);
+  }
   if (JSON.stringify([...files.keys()].sort()) !== JSON.stringify([...Object.keys(bundle.files), 'bundle.json'].sort())) throw Error('Incomplete bundle inventory.');
   for (const [path, info] of Object.entries(bundle.files)) {
     const bytes = files.get(path);

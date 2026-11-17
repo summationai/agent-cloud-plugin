@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { buildPackage } from './build.mjs';
 import { readArtifactDirectory } from './validate.mjs';
 
-const generated = ['plugins/agent-cloud', '.agents/plugins/marketplace.json', '.claude-plugin/marketplace.json', 'README.md', 'DEVELOPMENT.md', 'PUBLISHING.md', 'LICENSE-STATUS.md', 'LICENSE', 'release.json', 'release-report.json'];
+const generated = ['plugins/agent-cloud', 'claude/agent-cloud', '.agents/plugins/marketplace.json', '.claude-plugin/marketplace.json', 'README.md', 'DEVELOPMENT.md', 'PUBLISHING.md', 'LICENSE-STATUS.md', 'LICENSE', 'release.json', 'release-report.json'];
 const stat = path => { try { return lstatSync(path); } catch (error) { if (error.code === 'ENOENT') return undefined; throw error; } };
 const tree = path => !stat(path) ? new Map() : stat(path).isDirectory() ? readArtifactDirectory(path) : new Map([['', readFileSync(path)]]);
 /** @param {{ root?: string, write?: boolean }} [options] */
