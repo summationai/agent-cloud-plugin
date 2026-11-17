@@ -1,6 +1,6 @@
 {
   "name": "agent-cloud",
-  "version": "0.3.12",
+  "version": "0.3.13",
   "environment": "production",
   "target": "combined",
   "repository": "https://github.com/summationai/agent-cloud-plugin",
@@ -15,7 +15,7 @@
   },
   "files": {
     ".claude-plugin/plugin.json": {
-      "sha256": "5739135b2cca386c190c9050ed1bee6393c0d8de64099fc2bcb2373c3c510e61",
+      "sha256": "a9314554a9d63870a1e3abc1660454763419fbf21a212646845cd9a61f387792",
       "bytes": 1010
     },
     ".mcp.json": {
@@ -23,8 +23,8 @@
       "bytes": 205
     },
     "ACCEPTANCE.md": {
-      "sha256": "0533811d2906cc915c54944b984070ac96ffd803a4d7a6eca4c424070943cc93",
-      "bytes": 3671
+      "sha256": "ff27618f89a7006cb301eeeae840711d1c163eb70baf11cbf9a02434146627dd",
+      "bytes": 3733
     },
     "CLIENTS.md": {
       "sha256": "27bc7f12238386516b640f067fd5f7db6a78aa25e9d8886e9037804f2881e497",
@@ -39,7 +39,7 @@
       "bytes": 98
     },
     "README.md": {
-      "sha256": "4483877f4e4b27c87afd51e9dc86bbcda0c4266902dd72f030ca3e4cd93700f8",
+      "sha256": "78bc774a5a8196f6d79cee8cfbeb6df4d4e6860d3ba335b9a4f1856ec559668d",
       "bytes": 6561
     },
     "agents/canvas-builder.md": {
@@ -55,7 +55,7 @@
       "bytes": 299
     },
     "plugin.json": {
-      "sha256": "c3a37e50ceb80114c168f5d1504420bd4c3a5a5b05f801ffc436922d59ac6910",
+      "sha256": "6f7dbf63c37d34b99b4c8dc338c0c5efe5f1303e70c62f0318e52a4b8888a1c0",
       "bytes": 1781
     },
     "references/connection.md": {
@@ -75,8 +75,8 @@
       "bytes": 387
     },
     "references/why-agent-cloud.md": {
-      "sha256": "0ae8556e1c77804dd0869ec78f2829994b8ed97ac981ab76a33446f0c90bf38e",
-      "bytes": 3921
+      "sha256": "71cc65dca2829313b5cbbd764bade6dc0fdea1410f34e2462e686ff4f90f1969",
+      "bytes": 3888
     },
     "scripts/connect-codex.mjs": {
       "sha256": "f25ccb2206a2e91886cc76051b8b843470a226ed55b7cd9637dd769a1d8f3b3b",
@@ -95,8 +95,8 @@
       "bytes": 7595
     },
     "skills/setup/SKILL.md": {
-      "sha256": "0eaff546ec552eb2e9987669368de722abd82432c3c1e9cf298f2bef049d2ebf",
-      "bytes": 15559
+      "sha256": "90ddcbfdf6868eae4ae5fbf7ba28a9e64c616bd3dc62ebe76009ed231f68d7b2",
+      "bytes": 15165
     }
   }
 }
