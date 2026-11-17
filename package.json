@@ -1,6 +1,6 @@
 {
   "name": "@agentcloud/plugins",
-  "version": "0.3.13",
+  "version": "0.3.14",
   "private": true,
   "type": "module",
   "description": "Shared agent.cloud workflows and Claude/Codex plugin packages",

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "agent-cloud": {
+      "type": "http",
+      "url": "https://agent.cloud/mcp"
+    },
+    "canvas": {
+      "type": "http",
+      "url": "https://canvas.agent.cloud/mcp"
+    }
+  }
+}

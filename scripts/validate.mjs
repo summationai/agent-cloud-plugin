@@ -11,6 +11,7 @@ import { checkOpenaiReview, validateIcon } from './release-config.mjs';
 const ajv = new Ajv2020({ strict: true, allErrors: true });
 const schemas = Object.fromEntries(['plugin', 'mcp'].map(name => [name, ajv.compile(JSON.parse(readFileSync(new URL(`../schemas/${name}.schema.json`, import.meta.url), 'utf8')))]));
 const hashPattern = /^[a-f0-9]{64}$/;
+const packageManagerFiles = new Set(['package.json', 'package-lock.json', 'npm-shrinkwrap.json', 'pnpm-workspace.yaml', 'pnpm-lock.yaml', '.yarnrc.yml', 'deno.json', 'composer.json', 'bower.json']);
 export function validateTarget(files, target) {
   if (!['combined', 'openai', 'claude'].includes(target)) throw Error('Unknown artifact target.');
   const json = path => { if (!files.has(path)) throw Error(`Missing ${path}`); return JSON.parse(files.get(path).toString()); };
@@ -61,7 +62,17 @@ export function validateTarget(files, target) {
     if (fields.name !== name || typeof fields.description !== 'string' || !fields.description.length) throw Error(`Invalid skill: ${name}`);
   }
   const bundle = json('bundle.json');
-  if (!files.has('README.md') || !files.has('scripts/connect-codex.mjs') || !files.has('references/starters.json')) throw Error('Artifact is not self-contained.');
+  if (!files.has('README.md') || !files.has('references/starters.json')) throw Error('Artifact is not self-contained.');
+  // Codex runs the bundled connection helper. The Claude directory accepts no scripts from an unverified organization,
+  // so the Claude tree holds only Markdown, JSON, the license and images, no package-manager configuration (which can
+  // end in .json or .yaml), no .claude folder or second .claude-plugin folder, and no file that starts with #!.
+  if (target !== 'claude' && !files.has('scripts/connect-codex.mjs')) throw Error('Artifact is not self-contained.');
+  if (target === 'claude') for (const [path, bytes] of files) {
+    if (!/\.(?:md|txt|json|ya?ml|png|jpe?g|gif|webp|ico)$/.test(path) && path !== 'LICENSE') throw Error(`Claude directory refuses this file type: ${path}`);
+    if (packageManagerFiles.has(posix.basename(path))) throw Error(`Claude directory refuses package-manager configuration: ${path}`);
+    if (path.split('/').includes('.claude') || (path.split('/').includes('.claude-plugin') && path !== '.claude-plugin/plugin.json')) throw Error(`Claude directory refuses this folder: ${path}`);
+    if (bytes.subarray(0, 2).toString() === '#!') throw Error(`Claude directory refuses a file that starts with #!: ${path}`);
+  }
   if (JSON.stringify([...files.keys()].sort()) !== JSON.stringify([...Object.keys(bundle.files), 'bundle.json'].sort())) throw Error('Incomplete bundle inventory.');
   for (const [path, info] of Object.entries(bundle.files)) {
     const bytes = files.get(path);

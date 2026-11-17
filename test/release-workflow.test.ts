@@ -88,11 +88,11 @@ test('PUB-4: a changed license or listing asks the release owner, by the bytes a
 test('PUB-4: the plan measures from the newest published release in a real repository, not an unpublished tag after it', (t) => {
   const dir = temporary(t);
   const git = (...args: string[]) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { cwd: dir, encoding: 'utf8' });
-  mkdirSync(join(dir, 'release-assets')); mkdirSync(join(dir, 'plugins/agent-cloud/.claude-plugin'), { recursive: true });
+  mkdirSync(join(dir, 'release-assets')); mkdirSync(join(dir, 'plugins/agent-cloud/.claude-plugin'), { recursive: true }); mkdirSync(join(dir, 'claude/agent-cloud/.claude-plugin'), { recursive: true });
   copyFileSync(join(root, 'release.config.json'), join(dir, 'release.config.json'));
   copyFileSync(join(root, 'release-assets/icon.png'), join(dir, 'release-assets/icon.png'));
   const at = (version: string, license: string) => {
-    for (const f of ['package.json', 'package-lock.json', 'release.json', 'plugins/agent-cloud/plugin.json', 'plugins/agent-cloud/.claude-plugin/plugin.json', 'plugins/agent-cloud/bundle.json']) writeFileSync(join(dir, f), JSON.stringify({ version }));
+    for (const f of ['package.json', 'package-lock.json', 'release.json', 'plugins/agent-cloud/plugin.json', 'plugins/agent-cloud/.claude-plugin/plugin.json', 'plugins/agent-cloud/bundle.json', 'claude/agent-cloud/.claude-plugin/plugin.json', 'claude/agent-cloud/bundle.json']) writeFileSync(join(dir, f), JSON.stringify({ version }));
     writeFileSync(join(dir, 'release-assets/LICENSE'), license);
     git('add', '-A'); git('commit', '-qm', version); git('tag', `v${version}`);
   };

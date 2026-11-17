@@ -13,6 +13,10 @@ const sources = [
   'skills/setup/SKILL.md', 'skills/build-and-host/SKILL.md', 'skills/manage-app/SKILL.md', 'skills/canvas/SKILL.md', 'agents/canvas-builder.md',
   'references/connection.md', 'references/continuity.md', 'references/local-publishing.md', 'references/why-agent-cloud.md', 'scripts/connect-codex.mjs',
 ];
+// Text between these markers is for Codex's local connection helper. The Claude tree drops it with the helper:
+// the Claude directory accepts no scripts from an unverified organization.
+const codexOnly = /<!-- codex-helper -->[\s\S]*?<!-- \/codex-helper -->(?:\n\n| )?/g, codexMarkers = /<!-- codex-helper -->\n?|<!-- \/codex-helper -->/g;
+const codexHelper = 'scripts/connect-codex.mjs';
 const json = value => Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const sorted = map => [...map].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
@@ -65,17 +69,31 @@ export function buildPackage({ environment = 'production', out, sourceRoot = pac
   shared.set('references/starters.json', json(starters));
   // Claude Code asks before reading any file outside the working directory, the plugin's own included, so each
   // skill carries the references it links to. The reference files still ship for people and other clients.
-  for (const skill of ['setup', 'build-and-host', 'manage-app']) {
+  const inline = files => { for (const skill of ['setup', 'build-and-host', 'manage-app']) {
     const path = `skills/${skill}/SKILL.md`, used = [];
-    const text = shared.get(path).toString()
+    const text = files.get(path).toString()
       .replace(/\[([^\]]+)\]\(\.\.\/\.\.\/references\/([a-z-]+\.(?:md|json))\)/g, (_match, label, file) => {
         if (!used.includes(file)) used.push(file);
         return `${label} (\`${file}\` under References below)`;
       })
       .replace(/\[([^\]]+)\]\(\.\.\/([a-z-]+)\/SKILL\.md\)/g, (_match, label, other) => `${label} (the ${other} skill)`);
     if (!used.length) continue;
-    shared.set(path, Buffer.from(`${text.trimEnd()}\n\n## References\n\nThese are this skill's references in full. Use them here instead of opening the plugin's files.\n\n${used.map(file => inlineReference(file, shared.get(`references/${file}`).toString(), `skills/${skill}`)).join('\n\n')}\n`));
-  }
+    files.set(path, Buffer.from(`${text.trimEnd()}\n\n## References\n\nThese are this skill's references in full. Use them here instead of opening the plugin's files.\n\n${used.map(file => inlineReference(file, files.get(`references/${file}`).toString(), `skills/${skill}`)).join('\n\n')}\n`));
+  } };
+  // codex false gives the Claude tree: no helper, and none of the text that tells Codex to run it.
+  const finish = codex => {
+    const files = new Map();
+    for (const [path, bytes] of shared) {
+      if (!codex && path === codexHelper) continue;
+      if (!path.endsWith('.md')) { files.set(path, bytes); continue; }
+      const text = bytes.toString().replace(codex ? codexMarkers : codexOnly, '');
+      if (!codex && /codex-helper|connect-codex/.test(text)) throw Error(`Codex helper text outside its markers: ${path}`);
+      files.set(path, Buffer.from(text));
+    }
+    inline(files);
+    return files;
+  };
+  const codexShared = finish(true), claudeShared = finish(false);
   const identity = { name, version, description: config.plugin.description, author: config.plugin.author, homepage: config.plugin.homepage, repository: config.repository, keywords: config.plugin.keywords, ...(config.license.id ? { license: config.license.id } : {}) };
   const server = url => ({ type: 'streamable-http', url });
   // OpenAI's portal connects one MCP server per plugin and reads review cases from the root manifest only when the
@@ -109,11 +127,13 @@ export function buildPackage({ environment = 'production', out, sourceRoot = pac
     }));
     return result;
   };
-  const combined = bundle([...shared, ...installed, ...claude], 'combined');
+  const combined = bundle([...codexShared, ...installed, ...claude], 'combined');
+  // The Claude install tree is exactly the Claude submission: the directory reads it from the repository.
+  const claudeTree = bundle([...claudeShared, ...claude], 'claude');
   const targetNames = target === 'all' ? ['openai', 'claude'] : [target];
   const archives = new Map(), validations = [validateTarget(combined, 'combined')];
   for (const name of targetNames) {
-    const files = bundle(name === 'openai' ? [...[...shared].filter(([path]) => !/canvas/.test(path)), ...openai] : [...shared, ...claude], name);
+    const files = name === 'openai' ? bundle([...[...codexShared].filter(([path]) => !/canvas/.test(path)), ...openai], name) : claudeTree;
     // A fixed ZIP wall-clock timestamp and sorted entries give reproducible bytes.
     const bytes = Buffer.from(zipSync(Object.fromEntries(sorted(files)), { level: 9, mtime: new Date(1980, 0, 1) }));
     validations.push(validateTarget(readArtifactZip(bytes), name));
@@ -131,14 +151,15 @@ export function buildPackage({ environment = 'production', out, sourceRoot = pac
   if (release && Object.values(readiness).some(gaps => gaps.length)) throw Error(`Release configuration is incomplete: ${JSON.stringify(readiness)}`);
   const repository = new Map();
   for (const [path, bytes] of combined) repository.set(`plugins/${name}/${path}`, bytes);
-  repository.set('README.md', Buffer.from(shared.get('README.md').toString().replaceAll('(CLIENTS.md)', '(plugins/agent-cloud/CLIENTS.md)').replaceAll('(ACCEPTANCE.md)', '(plugins/agent-cloud/ACCEPTANCE.md)').replaceAll('(references/connection.md)', '(plugins/agent-cloud/references/connection.md)') + '\n## Maintain this source repository\n\nThis repository includes the editable workflow sources, helpers, templates, configuration, pinned dependencies, tests and build tools. Run `npm ci`, `npm test`, `npm run typecheck` and `npm run build` with Node 24.22.1 or later. Read [DEVELOPMENT.md](DEVELOPMENT.md) for source layout, generated-tree checks and both submission targets.\n'));
+  for (const [path, bytes] of claudeTree) repository.set(`claude/${name}/${path}`, bytes);
+  repository.set('README.md', Buffer.from(codexShared.get('README.md').toString().replaceAll('(CLIENTS.md)', '(plugins/agent-cloud/CLIENTS.md)').replaceAll('(ACCEPTANCE.md)', '(plugins/agent-cloud/ACCEPTANCE.md)').replaceAll('(references/connection.md)', '(plugins/agent-cloud/references/connection.md)') + '\n## Maintain this source repository\n\nThis repository includes the editable workflow sources, helpers, templates, configuration, pinned dependencies, tests and build tools. Run `npm ci`, `npm test`, `npm run typecheck` and `npm run build` with Node 24.22.1 or later. Read [DEVELOPMENT.md](DEVELOPMENT.md) for source layout, generated-tree checks and both submission targets.\n'));
   repository.set('DEVELOPMENT.md', render('content/DEVELOPMENT.md'));
   repository.set('PUBLISHING.md', render('content/PUBLISHING.md'));
   repository.set('LICENSE-STATUS.md', licenseStatus); if (license) repository.set('LICENSE', license);
   repository.set('release.json', json({ name, version, environment, repository: config.repository, bundle_sha256: digest(combined.get('bundle.json')), license: config.license.id, targets: targetNames }));
   repository.set('release-report.json', json(report));
   repository.set('.agents/plugins/marketplace.json', json({ name: marketplaceName, interface: { displayName: config.marketplace.displayName }, plugins: [{ name, source: { source: 'local', path: `./plugins/${name}` }, policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL' }, category: config.marketplace.category }] }));
-  repository.set('.claude-plugin/marketplace.json', json({ name: marketplaceName, owner: config.marketplace.owner, metadata: { description: config.marketplace.description }, plugins: [{ name, source: `./plugins/${name}`, description: config.plugin.description }] }));
+  repository.set('.claude-plugin/marketplace.json', json({ name: marketplaceName, owner: config.marketplace.owner, metadata: { description: config.marketplace.description }, plugins: [{ name, source: `./claude/${name}`, description: config.plugin.description }] }));
   // Publish maintainable source as well as the ready-to-install tree. No private
   // imports, workspace lock, dependency directory or Git history is exported.
   for (const path of [...sources, 'package.json', 'package-lock.json', 'tsconfig.json', 'pins.json', '.gitignore',

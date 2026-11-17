@@ -1,0 +1,29 @@
+{
+  "name": "agent-cloud",
+  "version": "0.3.14",
+  "description": "Host and run the apps your coding agent builds: one server with its own Postgres, migrations rehearsed on a branch of production, and a person's approval before live data changes. Set up agent.cloud, pick the right host for an app, then build, deploy and manage it from your coding agent with MCP and the agc CLI.",
+  "author": {
+    "name": "agent.cloud"
+  },
+  "homepage": "https://agent.cloud",
+  "repository": "https://github.com/summationai/agent-cloud-plugin",
+  "keywords": [
+    "agent-cloud",
+    "hosting",
+    "deploy",
+    "deployment",
+    "postgres",
+    "database",
+    "full-stack",
+    "migrations",
+    "apps",
+    "agc"
+  ],
+  "license": "Apache-2.0",
+  "displayName": "agent.cloud",
+  "supportUrl": "https://agent.cloud/support",
+  "documentationUrl": "https://docs.agent.cloud/docs",
+  "privacyPolicyUrl": "https://agent.cloud/privacy",
+  "termsOfServiceUrl": "https://agent.cloud/terms",
+  "icon": "./assets/icon.png"
+}
