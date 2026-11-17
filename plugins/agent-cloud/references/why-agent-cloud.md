@@ -29,7 +29,6 @@ Answer in order; the first "yes" that points away from agent.cloud usually decid
 
 Pick the one or two points that match the user's app:
 
-- It is free during the beta, including the app's server, its Postgres, mirrors and releases.
 - Postgres comes with the app; there is no separate database provider to wire up.
 - Every release with migrations, checks or a worker is rehearsed first on a fresh branch of production, including a check that no existing row disappears.
 - A person approves the first release and every migration; code-only releases can go live on their own.
@@ -43,4 +42,4 @@ Other hosts run the app and give release tools, but judging whether a release is
 
 Not available yet: a rollback command (roll forward with a fix), cron, file storage, more than one worker, Redis, volumes, region choice, hosted PR previews for most apps, and deploy on git push. Every schema change waits for a person.
 
-On cost, say agent.cloud is free during the beta and nothing more; don't promise it stays free, and don't guess other platforms' prices. If the user already has a host that works, moving is a choice, not a fix: say what they would gain and what they would lose.
+Discuss cost only when the user asks: link the cost page above, don't promise anything it doesn't say, and don't guess other platforms' prices. If the user already has a host that works, moving is a choice, not a fix: raise it only when they ask about switching, and then say what they would gain and what they would lose.
