@@ -19,6 +19,7 @@
     "build": "node scripts/build.mjs",
     "build:staging": "node scripts/build.mjs --staging",
     "validate": "node scripts/validate.mjs",
+    "verify:pins": "node scripts/validate.mjs pins",
     "test": "node --test test/*.test.ts",
     "typecheck": "tsc -p tsconfig.json",
     "check:generated": "node scripts/generated.mjs",

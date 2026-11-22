@@ -6,7 +6,7 @@ import { dirname, isAbsolute, join, posix, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { zipSync } from 'fflate';
 import { loadReleaseConfig, mcpReviewGaps } from './release-config.mjs';
-import { readArtifactZip, validateTarget } from './validate.mjs';
+import { readArtifactZip, validateStartersPin, validateTarget } from './validate.mjs';
 
 const packageRoot = fileURLToPath(new URL('../', import.meta.url));
 const sources = [
@@ -45,7 +45,8 @@ export function buildPackage({ environment = 'production', out, sourceRoot = pac
   };
   const { version } = JSON.parse(read('package.json').toString());
   const { protocol_version: protocolVersion, starters } = JSON.parse(read('pins.json').toString());
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(protocolVersion) || !/^[a-f0-9]{40}$/.test(starters?.commit) || !/^[a-f0-9]{64}$/.test(starters?.sha256)) throw Error('Invalid public protocol/starter pins.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(protocolVersion)) throw Error('Invalid public protocol/starter pins.');
+  validateStartersPin(starters);
   if (typeof version !== 'string' || !/^\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$/.test(version)) throw Error('A versioned plugin package is required.');
   const { config, license, icon } = loadReleaseConfig(sourceRoot, configPath);
   const origin = environment === 'staging' ? 'https://staging-agent.cloud' : 'https://agent.cloud';

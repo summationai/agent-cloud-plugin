@@ -7,6 +7,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { buildPackage } from '../scripts/build.mjs';
+import { parseLsRemoteTagCommit, readArtifactDirectory, validateStartersPin, validateTarget, verifyStartersPin } from '../scripts/validate.mjs';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import { parse as parseYaml } from 'yaml';
 
@@ -143,4 +144,38 @@ test('PLG-29: importing the package builder has no build, install or connection 
   const result = spawnSync(process.execPath, ['--input-type=module', '-e', `await import(${JSON.stringify(new URL('../scripts/build.mjs', import.meta.url).href)})`], { cwd: dir, encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr); assert.equal(result.stdout, '');
   assert.deepEqual(readdirSync(dir), []);
+});
+
+test('PLG-29: starter pin validation rejects malformed pins and verifies upstream tag commit and archive sha256', async t => {
+  const valid = { ...STARTERS };
+  assert.equal(validateStartersPin(valid), valid);
+  assert.throws(() => validateStartersPin({ ...valid, version: '1.2.39' }), /version/);
+  assert.throws(() => validateStartersPin({ ...valid, commit: 'not-a-sha' }), /commit/);
+  assert.throws(() => validateStartersPin({ ...valid, sha256: 'short' }), /sha256/);
+  assert.throws(() => validateStartersPin({ ...valid, stacks: [] }), /stacks/);
+  assert.throws(() => validateStartersPin({ ...valid, stacks: ['typescript', 'typescript'] }), /stacks/);
+  assert.throws(() => validateStartersPin({ ...valid, repository: 'https://github.com/evil/agc-starters' }), /repository/);
+  assert.throws(() => validateStartersPin({ ...valid, archive_url: 'https://github.com/summationai/agc-starters/releases/download/v1.2.36/starters-v1.2.36.tgz' }), /archive_url/);
+
+  const built = readArtifactDirectory(buildPackage({ out: join(temporary(t), 'pin-check') }).plugin);
+  const badStarters = Buffer.from(JSON.stringify({ ...valid, archive_url: 'https://github.com/summationai/agc-starters/releases/download/v1.2.36/starters-v1.2.36.tgz' }));
+  const bundle = JSON.parse(built.get('bundle.json')!.toString());
+  bundle.files['references/starters.json'] = { sha256: hash(badStarters), bytes: badStarters.length };
+  assert.throws(() => validateTarget(new Map([...built, ['references/starters.json', badStarters], ['bundle.json', Buffer.from(JSON.stringify(bundle))]]), 'combined'), /archive_url/);
+
+  const tagObj = '1'.repeat(40), commit = '2'.repeat(40);
+  assert.equal(parseLsRemoteTagCommit(`${commit}\trefs/tags/v1.2.39\n`, 'v1.2.39'), commit);
+  assert.equal(parseLsRemoteTagCommit(`${tagObj}\trefs/tags/v1.2.39\n${commit}\trefs/tags/v1.2.39^{}\n`, 'v1.2.39'), commit, 'annotated tag peels to commit');
+  assert.equal(parseLsRemoteTagCommit(`${commit}\trefs/tags/v1.2.38\n`, 'v1.2.39'), undefined);
+
+  const archive = Buffer.from('starter-archive-bytes');
+  const pins = { protocol_version: protocolVersion, starters: { ...valid, commit, sha256: hash(archive) } };
+  const verified = await verifyStartersPin(pins, {
+    resolveTag: async (repo, version) => { assert.equal(repo, valid.repository); assert.equal(version, valid.version); return commit; },
+    fetchArchive: async (url) => { assert.equal(url, valid.archive_url); return archive; },
+  });
+  assert.deepEqual(verified, { valid: true, version: valid.version, commit, sha256: hash(archive) });
+  await assert.rejects(() => verifyStartersPin(pins, { resolveTag: async () => undefined, fetchArchive: async () => archive }), /was not found/);
+  await assert.rejects(() => verifyStartersPin(pins, { resolveTag: async () => '3'.repeat(40), fetchArchive: async () => archive }), /resolves to/);
+  await assert.rejects(() => verifyStartersPin(pins, { resolveTag: async () => commit, fetchArchive: async () => Buffer.from('tampered') }), /sha256 is/);
 });
